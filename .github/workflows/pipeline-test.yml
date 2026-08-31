@@ -1,0 +1,205 @@
+# =============================================================================
+# Clover (Payload CMS) — CI/CD → TEST OpenShift (tst-vcloud, namespace vepas-ai-am)
+#
+# devops-proje-sablonu/.github/workflows/pipeline-test.yml şablonundan npm/Next.js
+# projesine uyarlandı — bkz. docs/OCP-DEVOPS-RUNBOOK.md §2 (S1-S12 kararları).
+#
+# ⚠️ PUSH NOTU: GitHub, .github/workflows/ altındaki dosyaların HTTPS + OAuth/PAT ile
+#    push edilmesini token'da `workflow` scope'u yoksa REDDEDER. Çözüm (biri yeterli):
+#      1) SSH remote:  git remote set-url origin git@github.vpara.local:<org>/clover.git
+#      2) Classic PAT: `repo` + `workflow` scope'ları
+#      3) Fine-grained PAT: Repository permissions > Workflows: Read and write
+#      4) Dosyayı GHES web arayüzünden oluştur
+#
+# ⚠️ HENÜZ TEYİT EDİLMEDİ (docs/OCP-DEVOPS-RUNBOOK.md §7):
+#   - GHES repo kaydı (bu pipeline'ın çalışması için önce bu gerekiyor)
+#   - `runs-on: MENDPROJECT-Vepas` (mend.yml) — gerçek Mend runner etiketi DevOps'tan
+#     teyit edilmeli, genaiops-event-processor'daki isimden tahmin edildi
+#   - Image pull secret / registry kullanıcı adı-token (Faz 0 adım 1)
+# =============================================================================
+name: CI/CD (test)
+
+on:
+  push:
+    branches: [development, release]
+  pull_request:
+    branches: [development, release, master, main]
+  workflow_dispatch: {}
+
+env:
+  APP_NAME: clover
+
+  # GHES kurumsal CA'sı Node.js tarafından tanınmadığı için actions/cache ve
+  # actions/upload-artifact "self-signed certificate in certificate chain" ile patlar.
+  NODE_EXTRA_CA_CERTS: /etc/pki/tls/certs/ca-bundle.crt
+
+  # TEST OCP — değerler ORGANIZASYON Variables/Secrets'tan gelir.
+  OPENSHIFT_SERVER:        ${{ vars.OPENSHIFT_SERVER_TST }}        # https://api.tst-vcloud.vpara.local:6443
+  OPENSHIFT_TEST_USER:     ${{ vars.OPENSHIFT_TEST_USER }}
+  OPENSHIFT_TEST_PASSWORD: ${{ secrets.OPENSHIFT_TEST_PASSWORD }}
+  OPENSHIFT_NAMESPACE:     ${{ vars.OPENSHIFT_PROJECT_AD }}        # vepas-ai-am
+
+  REGISTRY_URL: containers.github.vpara.local
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) BUILD + TEST (npm/Next.js/Payload — Maven şablonu yerine)
+  # ---------------------------------------------------------------------------
+  build-test:
+    name: Build & Test
+    runs-on: githubrunner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      # Payload'ın env.ts'i bu değerlerin varlığını build/module-load anında
+      # doğruluyor (gerçek bir DB bağlantısı açmadan) — CI'da throwaway değerler
+      # yeterli, gerçek Secret sadece OCP'de kullanılır.
+      - name: Build
+        run: npm run build
+        env:
+          DATABASE_URI: postgres://ci:ci@localhost:5432/ci
+          PAYLOAD_SECRET: ci-only-dummy-secret-not-for-production-000000
+          REVALIDATE_SECRET: ci-only-dummy-secret
+          PREVIEW_SECRET: ci-only-dummy-secret
+
+  # ---------------------------------------------------------------------------
+  # 2) GÜVENLİK TARAMALARI — build-test ile PARALEL (kendi runner etiketlerini isterler)
+  # ---------------------------------------------------------------------------
+  fortify-scan:
+    name: Fortify SAST
+    uses: ./.github/workflows/fortify.yml
+    with:
+      env_name: vepas-ai-am
+      source_repo: ${{ github.repository }}
+      project_type: npm
+      fortify_blocker: "0"        # S11: sadece rapor, blocker değil
+    secrets: inherit
+
+  mend-scan:
+    name: Mend SCA
+    uses: ./.github/workflows/mend.yml
+    with:
+      target_branch: ${{ github.ref_name }}
+      env_name: vepas-ai-am
+      project_type: npm
+    secrets: inherit
+
+  sonar-scan:
+    name: SonarQube
+    uses: ./.github/workflows/sonar.yml
+    with:
+      env_name: vepas-ai-am
+      project_type: npm
+      sonar_blocker: "false"      # S11: sadece rapor, blocker değil
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # 3) IMAGE BUILD + TEST OCP DEPLOY
+  # ---------------------------------------------------------------------------
+  build-and-deploy:
+    name: Build Image & Deploy to TEST
+    runs-on: githubrunner
+    needs: build-test
+    if: >-
+      github.event_name != 'pull_request' && (
+        github.ref == 'refs/heads/development' ||
+        github.ref == 'refs/heads/release' ||
+        github.ref == 'refs/heads/main'
+      )
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: img
+        run: echo "image=${{ env.REGISTRY_URL }}/${{ github.repository_owner }}/${{ env.APP_NAME }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect container engine
+        id: engine
+        shell: bash
+        run: |
+          set -e
+          if command -v podman >/dev/null 2>&1; then echo "bin=podman" >> "$GITHUB_OUTPUT"
+          elif command -v docker >/dev/null 2>&1; then echo "bin=docker" >> "$GITHUB_OUTPUT"
+          else echo "::error::Runner'da ne podman ne docker var — imaj build edilemez."; exit 1; fi
+
+      - name: Log in to Container Registry
+        run: |
+          echo "${{ secrets.REGISTRY_LOGIN_TOKEN }}" | ${{ steps.engine.outputs.bin }} login "${{ env.REGISTRY_URL }}" \
+            -u "${{ vars.REGISTRY_LOGIN_USERNAME }}" --password-stdin
+
+      - name: Build image
+        run: ${{ steps.engine.outputs.bin }} build -t "${{ steps.img.outputs.image }}" -f Containerfile .
+
+      - name: Push image
+        run: ${{ steps.engine.outputs.bin }} push "${{ steps.img.outputs.image }}"
+
+      - name: Ensure OpenShift CLI (oc)
+        shell: bash
+        run: |
+          set -e
+          command -v oc >/dev/null 2>&1 && { oc version --client | head -1; exit 0; }
+          curl -fsSL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -o "${RUNNER_TEMP}/oc.tar.gz"
+          tar -xzf "${RUNNER_TEMP}/oc.tar.gz" -C "${RUNNER_TEMP}" oc
+          echo "${RUNNER_TEMP}" >> "${GITHUB_PATH}"
+
+      - name: Log in to OpenShift
+        run: |
+          oc login "${OPENSHIFT_SERVER}" --insecure-skip-tls-verify=true \
+            -u "${OPENSHIFT_TEST_USER}" -p "${OPENSHIFT_TEST_PASSWORD}"
+          oc project "${OPENSHIFT_NAMESPACE}"
+
+      # ⚠️ ConfigMap (clover-config), Secret (clover-secret), Route ve MinIO
+      #    (clover-minio, k8s/minio.yaml) BURADA UYGULANMAZ. Bunlar Faz 0'da elle,
+      #    BİR KEZ kurulur (bkz. DEPLOYMENT_RUNBOOK.md) — pipeline onlara bir daha
+      #    dokunmaz. Sebep: canlı ayarların/parolaların her deploy'da sessizce
+      #    ezilmesini engellemek, sırları GitHub Secrets'a hiç taşımamak. MinIO
+      #    kalıcı veri (PVC) taşıyan bir kaynak — pipeline'ın "her push'ta apply"
+      #    döngüsüne girmemeli.
+      #
+      # ⚠️ CA sertifika ConfigMap adımı YOK: S5 kararı (§2) — TLS/CA gerekmiyor.
+
+      - name: Apply ServiceAccount
+        run: oc apply -f k8s/serviceaccount.yaml
+
+      - name: Apply Service
+        run: oc apply -f k8s/service.yaml
+
+      - name: Apply HPA
+        run: oc apply -f k8s/hpa.yaml || true
+
+      # NetworkPolicy KASTEN yorumda: k8s/networkpolicy.yaml şu haliyle placeholder.
+      # Güvenlik/ağ ekibi gerçek CIDR+port kurallarını doldurunca aç.
+      # - name: Apply NetworkPolicy
+      #   run: oc apply -f k8s/networkpolicy.yaml
+
+      - name: Apply Deployment
+        env:
+          IMAGE_REF: ${{ steps.img.outputs.image }}
+        run: envsubst < k8s/deployment.yaml | oc apply -f -
+
+      - name: Rollout status
+        run: oc rollout status deployment/${APP_NAME} --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          oc get pods -l app=${APP_NAME} -o wide
+          ROUTE_HOST=$(oc get route ${APP_NAME} -o jsonpath='{.spec.host}' 2>/dev/null || echo "not found")
+          echo "Liveness:  https://${ROUTE_HOST}/api/health/liveness"
+          echo "Readiness: https://${ROUTE_HOST}/api/health/readiness"
