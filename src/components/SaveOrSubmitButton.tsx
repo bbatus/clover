@@ -5,7 +5,7 @@ import { useAuth, useConfig, useDocumentInfo, useForm, useLocale } from "@payloa
 import { formatAdminURL } from "payload/shared";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
-import { ROLES } from "@/access/roles";
+import { ROLES } from "@/access/roleConstants";
 
 /**
  * RFP feedback: "taslağı kaydet dedi mesela onaya gönder demesi lazımdı" —

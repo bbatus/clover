@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useDocumentInfo } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
-import { REFERENCE_MAP } from "@/hooks/referentialIntegrity";
+import { REFERENCE_MAP } from "@/hooks/referenceMap";
 import { COLLECTION_LABELS } from "@/lib/collectionLabels";
 
 type UsageHit = { collectionSlug: string; docId: string | number; docTitle: string };

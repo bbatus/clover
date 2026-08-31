@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
-import { ROLES } from "@/access/roles";
+import { ROLES } from "@/access/roleConstants";
 
 /**
  * RFP feedback 5.6: the Users list gets a `lockUntil` column, but a column

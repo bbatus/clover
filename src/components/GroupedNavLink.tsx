@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
-import { ROLES } from "@/access/roles";
+import { ROLES } from "@/access/roleConstants";
 
 /**
  * Follow-up 25.08: "en altta iki tane atıl duran içerik yönetimi ve ücretler

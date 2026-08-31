@@ -6,7 +6,7 @@ import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
 import ReorderWidget from "./ReorderWidget";
 import { TableSkeleton } from "./TableSkeleton";
-import { ROLES } from "@/access/roles";
+import { ROLES } from "@/access/roleConstants";
 
 /** Mirrors ReorderWidget's own `canReorder` — kept next to it so the two cannot drift apart silently again. */
 const REORDER_ROLES = new Set<string>([ROLES.NEW_VERTICAL_MAKER, ROLES.NEW_VERTICAL_CHECKER, ROLES.GROWTH_CHECKER]);

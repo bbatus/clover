@@ -6,7 +6,7 @@ import { formatAdminURL } from "payload/shared";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
 import { useIsActiveCheckerDelegate } from "./useIsActiveCheckerDelegate";
-import { ROLES } from "@/access/roles";
+import { ROLES } from "@/access/roleConstants";
 
 /**
  * Two RFP feedback items land here:

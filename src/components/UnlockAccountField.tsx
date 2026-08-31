@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth, useField, useFormFields } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
-import { ROLES } from "@/access/roles";
+import { ROLES } from "@/access/roleConstants";
 import { describeApiError } from "@/lib/apiErrorMessage";
 
 /**

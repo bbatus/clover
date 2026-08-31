@@ -2,7 +2,7 @@
 
 import { useField } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
-import { ROLE_OPTIONS } from "@/access/roles";
+import { ROLE_OPTIONS } from "@/access/roleConstants";
 
 /**
  * Read-only display for AuditLogs.userRole. The column stores the raw role

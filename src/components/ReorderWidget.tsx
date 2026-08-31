@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast, useAuth } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
-import { ROLES } from "@/access/roles";
+import { ROLES } from "@/access/roleConstants";
 
 /**
  * RFP §3.1.6: content sorting. The `order` number field already existed on

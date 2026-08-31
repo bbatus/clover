@@ -4,7 +4,7 @@ import { PublishButton, UnpublishButton, useAuth } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
 import { useIsActiveCheckerDelegate } from "./useIsActiveCheckerDelegate";
-import { ROLES } from "@/access/roles";
+import { ROLES } from "@/access/roleConstants";
 
 /**
  * Follow-up 28.08, from the user: "zaten maker yayınlayamıyor, yayınla

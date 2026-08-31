@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
-import { ROLE_OPTIONS } from "@/access/roles";
+import { ROLE_OPTIONS } from "@/access/roleConstants";
 import { describeApiError } from "@/lib/apiErrorMessage";
 
 type AccountUser = {

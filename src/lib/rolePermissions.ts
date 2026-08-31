@@ -1,4 +1,4 @@
-import { ROLES, type RoleValue } from "@/access/roles";
+import { ROLES, type RoleValue } from "@/access/roleConstants";
 import { ROLE_DIRECTORY, type RoleDirectoryEntry } from "@/access/roleMapping";
 import { COLLECTION_LABELS, DRAFT_ENABLED_COLLECTIONS } from "@/lib/collectionLabels";
 

@@ -1,4 +1,4 @@
-import { ROLES, type RoleValue } from "@/access/roles";
+import { ROLES, type RoleValue } from "@/access/roleConstants";
 
 /**
  * Translation layer between "whatever group name AccessPoint/LDAP hands us"
