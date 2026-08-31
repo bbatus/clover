@@ -1,0 +1,25 @@
+# =============================================================================
+# Clover NetworkPolicy — PLACEHOLDER
+#
+# ⚠️ Şu haliyle HİÇBİR ŞEYİ KISITLAMAZ (`- {}` = her şeye izin). Güvenlik/ağ
+#    ekibi gerçek CIDR + port kurallarını doldurana kadar bilerek böyle
+#    bırakıldı. Doldurulduğunda namespace'te NetworkPolicy create yetkisi
+#    gerekir.
+#
+# Egress yazarken: Postgres (172.31.229.152:5432, S5 kararıyla düz TCP, TLS
+# yok), namespace-içi MinIO (Service DNS), site'ın Service'i, DNS (53/UDP).
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: clover
+  namespace: vepas-ai-am
+  labels: { app: clover }
+spec:
+  podSelector:
+    matchLabels: { app: clover }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - {}      # TODO: yalnızca router/namespace'ten gelen 3000'e izin ver
+  egress:
+    - {}      # TODO: Postgres 172.31.229.152:5432 + MinIO + site Service + DNS

@@ -1,0 +1,48 @@
+# =============================================================================
+# Clover (Payload CMS) — uygulama konfigürasyonu (PAROLA YOK)
+#
+# ⚠️ PIPELINE TARAFINDAN UYGULANMAZ. İlk kurulumda ve her değişiklikte ELLE:
+#       oc apply -f k8s/configmap.yaml -n vepas-ai-am && oc rollout restart deployment/clover -n vepas-ai-am
+#
+# ORTAM: TEST (tst-vcloud, namespace vepas-ai-am)
+#
+# ⚠️ DATABASE_URI burada YOK — Payload (payload.config.ts:537) host/port/db/
+# kullanıcıyı ayrı ayrı okumuyor, TEK bir postgres:// bağlantı string'i
+# okuyor. O string parola içerdiği için TAMAMEN Secret'ta
+# (k8s/secret.yaml) — bkz. docs/OCP-DEVOPS-RUNBOOK.md §3.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clover-config
+  namespace: vepas-ai-am
+  labels: { app: clover }
+data:
+  NODE_ENV: "production"
+  ENVIRONMENT: "test"
+
+  SITE_URL: "https://vodafonepaycomtr-vepas-ai-am.apps.tst-vcloud.vpara.local"
+  # Payload'ın kendi dışa açık adresi — boşsa admin-panel yazma işlemleri
+  # (kaydet/yayınla) sessizce 403 verir (payload.config.ts'nin kendi notu).
+  CMS_SERVER_URL: "https://clover-vepas-ai-am.apps.tst-vcloud.vpara.local"
+
+  # Site'ın OCP Service'i — aynı namespace içinde container/Service adıyla
+  # çözülüyor (yerelde docker-compose'un container_name'i neyse burada
+  # Service adı onun karşılığı).
+  SITE_REVALIDATE_URL: "http://vodafonepaycomtr:3000/api/revalidate"
+
+  # ---- MinIO (namespace içinde, geçici — k8s/minio.yaml) -------------------
+  # S3: kurumsal bir S3/MinIO yerine, netleşene kadar kendi MinIO'muzu bu
+  # namespace'e deploy ediyoruz (S3/S4 kararı). S3_ENDPOINT Service adıyla
+  # (pod-içi trafik); S3_PUBLIC_URL MinIO'nun KENDİ Route'u — yüklenen
+  # medya tarayıcıya DOĞRUDAN MinIO'dan servis ediliyor, Clover'ın üzerinden
+  # proxy'lenmiyor, o yüzden bunun herkese açık, gerçek bir host olması şart.
+  S3_ENDPOINT: "http://minio:9000"
+  S3_PUBLIC_URL: "https://minio-vepas-ai-am.apps.tst-vcloud.vpara.local"
+  S3_REGION: "us-east-1"
+  S3_BUCKET: "vodafonepaycomtr-media"
+
+  CMS_AUTO_LOGIN: "false"
+
+  LOG_LEVEL_ROOT: "INFO"
+  LOG_LEVEL_APP: "INFO"

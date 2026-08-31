@@ -1,0 +1,23 @@
+# Dış erişim Route'u — CMS admin paneli.
+#
+# host KASTEN YOK — OpenShift otomatik üretir. Gerçek bir örneği (aynı
+# namespace, aynı cluster'daki finwatcher-frontend route'u) kullanıcı verdi:
+#   finwatcher-frontend-vepas-ai-am.apps.tst-vcloud.vpara.local
+# Bizimki de aynı kalıpla oluşacak:
+#   clover-vepas-ai-am.apps.tst-vcloud.vpara.local
+#
+# Kurumsal DNS kaydı istenirse aşağıdaki `host:` satırı açılıp tam nitelikli
+# ad yazılır (S10, henüz TODO — otomatik host ile başlıyoruz).
+#
+# ⚠️ Pipeline tarafından UYGULANMAZ — ilk kurulumda elle oluşturulur.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: clover
+  namespace: vepas-ai-am
+  labels: { app: clover }
+spec:
+  # host: clover-vepas-ai-am.apps.tst-vcloud.vpara.local
+  to: { kind: Service, name: clover, weight: 100 }
+  port: { targetPort: http }
+  tls: { termination: edge, insecureEdgeTerminationPolicy: Redirect }

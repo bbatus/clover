@@ -1,0 +1,15 @@
+# S12: 1 replica ile başlıyoruz — HPA şimdilik dar bir aralıkta (1-2),
+# gerçek trafik gözlenince genişletilebilir.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: clover
+  namespace: vepas-ai-am
+  labels: { app: clover }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: clover }
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }

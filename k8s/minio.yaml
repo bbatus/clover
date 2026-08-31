@@ -1,0 +1,133 @@
+# =============================================================================
+# MinIO — namespace-içi, GEÇİCİ (S3/S4 kararı, docs/OCP-DEVOPS-RUNBOOK.md).
+#
+# Kurumsal bir S3/MinIO endpoint'i netleşene kadar kendi MinIO'muzu bu
+# namespace'e deploy ediyoruz — yereldeki docker-compose'daki minio/minio-init
+# servislerinin OCP karşılığı. Postgres'in aksine (harici, DBA'dan talep
+# edildi) MinIO burada bizim yönettiğimiz bir kaynak.
+#
+# ⚠️ Route ZORUNLU (sadece Service değil): yüklenen medya tarayıcıya
+# DOĞRUDAN MinIO'dan servis ediliyor (S3_PUBLIC_URL, Clover üzerinden proxy
+# değil) — Route olmadan hiçbir görsel yüklenmez.
+#
+# ⚠️ Tek replica, PVC'siz bir kesinti veri kaybı demektir — test için kabul
+# edilebilir, prod'a taşınmadan önce gerçek bir S3/nesne depolama (kurumsal
+# MinIO cluster'ı ya da bulut S3) değerlendirilmeli.
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-data
+  namespace: vepas-ai-am
+  labels: { app: minio }
+spec:
+  accessModes: [ReadWriteOnce]
+  # storageClassName kasıtlı boş — cluster'ın varsayılanını kullanır.
+  # Belirli bir StorageClass gerekiyorsa OCP admin'den öğrenip buraya yazın.
+  resources:
+    requests: { storage: 5Gi }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: vepas-ai-am
+  labels: { app: minio }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }  # ReadWriteOnce PVC — rolling update ikinci pod'u Pending'de bırakır
+  selector: { matchLabels: { app: minio } }
+  template:
+    metadata:
+      labels: { app: minio }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: minio
+          image: minio/minio:latest
+          args: ["server", "/data", "--console-address", ":9001"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # MinIO kendi süreç dosyalarını /data altında tutuyor
+            capabilities: { drop: ["ALL"] }
+          envFrom:
+            - secretRef: { name: clover-secret }  # MINIO_ROOT_USER / MINIO_ROOT_PASSWORD
+          ports:
+            - { name: api, containerPort: 9000 }
+            - { name: console, containerPort: 9001 }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+          readinessProbe:
+            httpGet: { path: /minio/health/ready, port: api }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /minio/health/live, port: api }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits:   { cpu: "500m", memory: "512Mi" }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: minio-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: vepas-ai-am
+  labels: { app: minio }
+spec:
+  type: ClusterIP
+  selector: { app: minio }
+  ports:
+    - { name: api, port: 9000, targetPort: api }
+    - { name: console, port: 9001, targetPort: console }
+---
+# Sadece S3 API portu (9000) dışa açık — konsol (9001) kasıtlı kapalı,
+# bir yönetim arayüzünün internete açılmasını istemiyoruz.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: minio
+  namespace: vepas-ai-am
+  labels: { app: minio }
+spec:
+  # host: minio-vepas-ai-am.apps.tst-vcloud.vpara.local (otomatik üretilir —
+  # k8s/configmap.yaml'daki S3_PUBLIC_URL bu host'u varsayıyor)
+  to: { kind: Service, name: minio, weight: 100 }
+  port: { targetPort: api }
+  tls: { termination: edge, insecureEdgeTerminationPolicy: Redirect }
+---
+# Tek seferlik: medya bucket'ını oluşturur + herkese-açık-okuma politikası
+# uygular (docker-compose'daki minio-init'in aynısı, Job olarak).
+#   oc create -f k8s/minio.yaml   # ilk kurulumda
+#   oc delete job clover-minio-init -n vepas-ai-am && oc create -f k8s/minio.yaml   # tekrar çalıştırmak için
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clover-minio-init
+  namespace: vepas-ai-am
+  labels: { app: minio }
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: { app: minio, job: clover-minio-init }
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          envFrom:
+            - configMapRef: { name: clover-config }   # S3_BUCKET
+            - secretRef:    { name: clover-secret }    # MINIO_ROOT_USER / MINIO_ROOT_PASSWORD
+          command: ["/bin/sh", "-c"]
+          args:
+            - >
+              mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" &&
+              mc mb --ignore-existing "local/$S3_BUCKET" &&
+              mc anonymous set download "local/$S3_BUCKET"

@@ -1,0 +1,78 @@
+# =============================================================================
+# Clover (Payload CMS) — Deployment, namespace vepas-ai-am, TEST cluster only
+# (tst-vcloud). See docs/OCP-DEVOPS-RUNBOOK.md for the decisions this encodes.
+#
+# ${IMAGE_REF} is filled by the pipeline via envsubst:
+#     IMAGE_REF=<image> envsubst < k8s/deployment.yaml | oc apply -f -
+# No other ${...} in this file — envsubst would blank them too.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clover
+  namespace: vepas-ai-am
+  labels: { app: clover }
+spec:
+  # S12: starting at 1 replica while this is still test-only.
+  replicas: 1
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  selector: { matchLabels: { app: clover } }
+  template:
+    metadata:
+      labels: { app: clover }
+    spec:
+      serviceAccountName: clover
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: clover
+          image: ${IMAGE_REF}
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          ports: [ { name: http, containerPort: 3000 } ]
+          envFrom:
+            - configMapRef: { name: clover-config }
+            - secretRef:    { name: clover-secret }
+          volumeMounts:
+            # readOnlyRootFilesystem:true — Next.js standalone doesn't write
+            # to disk at runtime beyond this (images.unoptimized:true on the
+            # site side means no image-cache writes either; verify this holds
+            # for Payload's own upload handling, which streams straight to
+            # MinIO rather than staging on local disk).
+            - { name: tmp, mountPath: /tmp }
+
+          # Both endpoints are real (src/lib/healthEndpoints.ts) — liveness
+          # never touches the DB, readiness does a real find({limit:0}).
+          startupProbe:
+            httpGet: { path: /api/health/liveness, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /api/health/liveness, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /api/health/readiness, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            # Readiness does a real DB round trip — give it more room than
+            # the 1s default (devops-proje-sablonu's own troubleshooting
+            # table lists exactly this as a sahada-yaşanmış failure mode).
+            timeoutSeconds: 6
+            failureThreshold: 3
+
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits:   { cpu: "1",    memory: "1Gi" }
+      volumes:
+        - { name: tmp, emptyDir: {} }
