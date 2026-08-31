@@ -37,8 +37,8 @@ data:
   # (pod-içi trafik); S3_PUBLIC_URL MinIO'nun KENDİ Route'u — yüklenen
   # medya tarayıcıya DOĞRUDAN MinIO'dan servis ediliyor, Clover'ın üzerinden
   # proxy'lenmiyor, o yüzden bunun herkese açık, gerçek bir host olması şart.
-  S3_ENDPOINT: "http://minio:9000"
-  S3_PUBLIC_URL: "https://minio-vepas-ai-am.apps.tst-vcloud.vpara.local"
+  S3_ENDPOINT: "http://clover-minio:9000"
+  S3_PUBLIC_URL: "https://clover-minio-vepas-ai-am.apps.tst-vcloud.vpara.local"
   S3_REGION: "us-east-1"
   S3_BUCKET: "vodafonepaycomtr-media"
 

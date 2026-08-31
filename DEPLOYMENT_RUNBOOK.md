@@ -44,7 +44,7 @@ oc apply -f k8s/configmap.yaml
 **4) MinIO (namespace-içi, geçici — bkz. k8s/minio.yaml'ın kendi notu)**
 ```bash
 oc apply -f k8s/minio.yaml
-oc wait --for=condition=ready pod -l app=minio -n vepas-ai-am --timeout=120s
+oc wait --for=condition=ready pod -l app=clover-minio -n vepas-ai-am --timeout=120s
 oc logs job/clover-minio-init -n vepas-ai-am   # bucket oluştu mu doğrula
 ```
 
@@ -55,7 +55,7 @@ oc apply -f k8s/service.yaml
 oc apply -f k8s/route.yaml
 oc apply -f k8s/hpa.yaml
 oc get route clover -o jsonpath='{.spec.host}'; echo
-oc get route minio -o jsonpath='{.spec.host}'; echo
+oc get route clover-minio -o jsonpath='{.spec.host}'; echo
 ```
 
 **6) Deployment (ilk kurulumda elle, sonra pipeline yapar)**

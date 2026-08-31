@@ -6,6 +6,12 @@
 # servislerinin OCP karşılığı. Postgres'in aksine (harici, DBA'dan talep
 # edildi) MinIO burada bizim yönettiğimiz bir kaynak.
 #
+# Her kaynak `clover-` önekiyle — namespace'te birden çok proje varsa
+# (nitekim var, finwatcher/genaiops aynı sunucuları paylaşıyor) düz "minio"
+# adı başka bir servisinkiyle çakışabilir; her şeyin hangi mikroservise ait
+# olduğu isimden belli olmalı (aynı kural deployment/service/route/configmap/
+# secret için zaten uygulanmıştı, bu dosya ilk yazımda o kalıba uymamıştı).
+#
 # ⚠️ Route ZORUNLU (sadece Service değil): yüklenen medya tarayıcıya
 # DOĞRUDAN MinIO'dan servis ediliyor (S3_PUBLIC_URL, Clover üzerinden proxy
 # değil) — Route olmadan hiçbir görsel yüklenmez.
@@ -17,9 +23,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: minio-data
+  name: clover-minio-data
   namespace: vepas-ai-am
-  labels: { app: minio }
+  labels: { app: clover-minio }
 spec:
   accessModes: [ReadWriteOnce]
   # storageClassName kasıtlı boş — cluster'ın varsayılanını kullanır.
@@ -30,16 +36,16 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: minio
+  name: clover-minio
   namespace: vepas-ai-am
-  labels: { app: minio }
+  labels: { app: clover-minio }
 spec:
   replicas: 1
   strategy: { type: Recreate }  # ReadWriteOnce PVC — rolling update ikinci pod'u Pending'de bırakır
-  selector: { matchLabels: { app: minio } }
+  selector: { matchLabels: { app: clover-minio } }
   template:
     metadata:
-      labels: { app: minio }
+      labels: { app: clover-minio }
     spec:
       securityContext:
         runAsNonRoot: true
@@ -72,17 +78,17 @@ spec:
             limits:   { cpu: "500m", memory: "512Mi" }
       volumes:
         - name: data
-          persistentVolumeClaim: { claimName: minio-data }
+          persistentVolumeClaim: { claimName: clover-minio-data }
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: minio
+  name: clover-minio
   namespace: vepas-ai-am
-  labels: { app: minio }
+  labels: { app: clover-minio }
 spec:
   type: ClusterIP
-  selector: { app: minio }
+  selector: { app: clover-minio }
   ports:
     - { name: api, port: 9000, targetPort: api }
     - { name: console, port: 9001, targetPort: console }
@@ -92,13 +98,13 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: minio
+  name: clover-minio
   namespace: vepas-ai-am
-  labels: { app: minio }
+  labels: { app: clover-minio }
 spec:
-  # host: minio-vepas-ai-am.apps.tst-vcloud.vpara.local (otomatik üretilir —
-  # k8s/configmap.yaml'daki S3_PUBLIC_URL bu host'u varsayıyor)
-  to: { kind: Service, name: minio, weight: 100 }
+  # host: clover-minio-vepas-ai-am.apps.tst-vcloud.vpara.local (otomatik
+  # üretilir — k8s/configmap.yaml'daki S3_PUBLIC_URL bu host'u varsayıyor)
+  to: { kind: Service, name: clover-minio, weight: 100 }
   port: { targetPort: api }
   tls: { termination: edge, insecureEdgeTerminationPolicy: Redirect }
 ---
@@ -111,12 +117,12 @@ kind: Job
 metadata:
   name: clover-minio-init
   namespace: vepas-ai-am
-  labels: { app: minio }
+  labels: { app: clover-minio }
 spec:
   backoffLimit: 3
   template:
     metadata:
-      labels: { app: minio, job: clover-minio-init }
+      labels: { app: clover-minio, job: clover-minio-init }
     spec:
       restartPolicy: Never
       containers:
@@ -128,6 +134,6 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - >
-              mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" &&
+              mc alias set local http://clover-minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" &&
               mc mb --ignore-existing "local/$S3_BUCKET" &&
               mc anonymous set download "local/$S3_BUCKET"
