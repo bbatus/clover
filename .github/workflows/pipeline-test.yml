@@ -107,8 +107,17 @@ jobs:
       # Payload'ın env.ts'i bu değerlerin varlığını build/module-load anında
       # doğruluyor (gerçek bir DB bağlantısı açmadan) — CI'da throwaway değerler
       # yeterli, gerçek Secret sadece OCP'de kullanılır.
+      #
+      # --webpack ZORUNLU burada: yukarıdaki SWC wasm fallback next.config.ts'i
+      # transpile etmeyi başardı ("✓ Running next.config.ts"), ama Turbopack
+      # (varsayılan builder) SADECE native binding'lerle çalışıyor — WASM binding
+      # yüklendiğinde Next'in kendi hata mesajı bunu söylüyor ve `--webpack`
+      # kullanmayı öneriyor. `npm run build` (package.json'daki `next build`) yerel
+      # geliştirmede Turbopack kullanmaya devam etsin diye package.json'a
+      # dokunmadık — sadece bu CI adımı, sadece bu eski-glibc runner için Webpack'e
+      # düşüyor.
       - name: Build
-        run: npm run build
+        run: npx next build --webpack
         env:
           DATABASE_URI: postgres://ci:ci@localhost:5432/ci
           PAYLOAD_SECRET: ci-only-dummy-secret-not-for-production-000000
