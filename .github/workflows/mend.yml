@@ -2,7 +2,7 @@
 # ŞABLON NOTU (devops-proje-sablonu)
 # `genaiops-event-processor`'da SAHADA ÇALIŞAN sürümün kopyasıdır.
 # Yeni projede DEĞİŞTİRİLECEKLER:
-#   - `runs-on: MENDPROJECT-<Proje>` → projenin kendi Mend runner etiketi (org'dan öğrenin)
+#   - `runs-on: MENDPROJECT-Vepas` → projenin kendi Mend runner etiketi (org'dan öğrenin)
 #   - Çağıran pipeline'daki `env_name`, `project_type`, `target_branch`
 #   - `vars.SEC_PROJECT_NAME`, `vars.JIRA_PROJECT_KEY`
 # NPM dalı hazırdır; React/frontend servisi için `project_type: npm` ile çağırın.
@@ -42,7 +42,7 @@ permissions:
 jobs:
   mend:
     name: mend - ${{ inputs.project_type }}
-    runs-on: MENDPROJECT-<Proje>
+    runs-on: MENDPROJECT-Vepas
 
     environment: ${{ inputs.env_name }}
 

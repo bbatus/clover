@@ -69,6 +69,41 @@ jobs:
       - name: Test
         run: npm run test
 
+      # 31.08.2026 sahada bulundu, KÖK SEBEP node_modules/next/dist/build/swc/index.js
+      # + .../lib/download-swc.js OKUNARAK doğrulandı (AGENTS.md'nin talimatı gereği —
+      # bu Next.js sürümü "bilinen" değil):
+      #
+      #   1) Runner'ın glibc'i (RHEL) native SWC binary'sinin (@next/swc-linux-x64-gnu)
+      #      istediği GLIBC_2.29'dan eski; musl alternatifi de host'a uymuyor.
+      #   2) Native başarısız olunca Next, wasm fallback'ı ÖNCE "yerelde var mı" diye
+      #      dener — ama bu kontrol `pathToFileURL('@next/swc-wasm-nodejs')` kullanıyor,
+      #      bu bir node_modules bare-specifier ÇÖZÜMÜ DEĞİL, cwd'ye göre düz bir dosya
+      #      yolu (doğrulandı: `node -e "require('url').pathToFileURL('@next/swc-wasm-nodejs')"`
+      #      → `file:///<cwd>/@next/swc-wasm-nodejs`) — yani paketi `npm install` ile
+      #      node_modules'a koymak (ilk denediğimiz, İŞE YARAMAYAN çözüm) bu kontrol
+      #      tarafından HİÇ görülmüyor.
+      #   3) Bu yüzden Next doğrudan `downloadWasmSwc()`'e düşüyor — o da npm'in
+      #      registry/proxy ayarlarını KULLANMAYAN çıplak bir `fetch()` ile
+      #      registry'den tarball indirmeye çalışıyor; kapalı ağda bu timeout'la patlıyor.
+      #
+      # Çözüm: `downloadWasmSwc()`'in INDİRMEDEN ÖNCE `fs.existsSync()` ile kontrol
+      # ettiği tam hedef klasörü (`node_modules/next/wasm/@next/swc-wasm-nodejs/`)
+      # BİZ, npm'in zaten çalışan `npm pack` komutuyla önceden dolduruyoruz — Next
+      # "zaten indirilmiş" görüp o adımı tamamen atlıyor, hiç ağa çıkmıyor.
+      - name: Pre-populate SWC wasm fallback (offline-safe, avoids next build's own fetch())
+        shell: bash
+        run: |
+          set -e
+          NEXT_VERSION="$(node -p "require('./node_modules/next/package.json').version")"
+          echo "[INFO] Next.js resolved version: ${NEXT_VERSION}"
+          PKG_NAME="@next/swc-wasm-nodejs"
+          TARBALL_PATH="$(npm pack "${PKG_NAME}@${NEXT_VERSION}" --json | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8"))[0].filename')"
+          WASM_DIR="node_modules/next/wasm/${PKG_NAME}"
+          mkdir -p "${WASM_DIR}"
+          tar -xzf "${TARBALL_PATH}" -C "${WASM_DIR}" --strip-components=1
+          rm -f "${TARBALL_PATH}"
+          echo "[INFO] ${WASM_DIR} dolduruldu — next build artık ağa çıkmadan bunu kullanacak."
+
       # Payload'ın env.ts'i bu değerlerin varlığını build/module-load anında
       # doğruluyor (gerçek bir DB bağlantısı açmadan) — CI'da throwaway değerler
       # yeterli, gerçek Secret sadece OCP'de kullanılır.
