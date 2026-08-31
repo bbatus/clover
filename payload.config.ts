@@ -53,6 +53,7 @@ import { env } from "./src/env";
 import { TRANSLATION_DEFAULTS } from "./src/lib/translationDefaults";
 import { refreshLabelCache } from "./src/lib/collectionLabels";
 import { auditExportEndpoint, auditForbiddenAttempt } from "./src/hooks/audit";
+import { livenessEndpoint, readinessEndpoint } from "./src/lib/healthEndpoints";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -439,7 +440,8 @@ export default buildConfig({
   // auditExportEndpoint's doc comment in hooks/audit.ts) — a root-level
   // endpoint is the extension point for that, unrelated to any one
   // collection's own CRUD lifecycle.
-  endpoints: [auditExportEndpoint],
+  // Health probes for OCP (liveness/readiness) — see healthEndpoints.ts.
+  endpoints: [auditExportEndpoint, livenessEndpoint, readinessEndpoint],
   // RFP §7.2: logs every rejected (403) write attempt, across every
   // collection at once — see auditForbiddenAttempt's doc comment
   // (hooks/audit.ts) for why root-level is the right extension point here.
