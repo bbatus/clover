@@ -1048,7 +1048,10 @@ const StepPhonesBlock: Block = {
       name: "steps", type: "array", minRows: 1,
       label: { tr: "Adımlar", en: "Steps" },
       labels: { singular: { tr: "Adım", en: "Step" }, plural: { tr: "Adımlar", en: "Steps" } },
-      admin: { description: { tr: "Her satır bir ürün tanıtımı (telefon görseli + başlık + açıklama). Satırlar dönüşümlü olarak solda/sağda dizilir.", en: "Each row is one product showcase (phone image + title + copy). Rows alternate left/right." } },
+      // 01.09.2026 kullanıcı geri bildirimi: satırlar artık solda/sağda
+      // DÖNÜŞMÜYOR (canlı sitede tutarlı tek bir düzen var) — bkz.
+      // StepPhones.tsx.
+      admin: { description: { tr: "Her satır bir ürün tanıtımı (telefon görseli + başlık + açıklama). Görsel her zaman aynı tarafta, tutarlı bir düzende dizilir.", en: "Each row is one product showcase (phone image + title + copy). The image always sits on the same side, in a consistent layout." } },
       fields: [
         { name: "image", label: { tr: "Görsel", en: "Image" }, type: "upload", relationTo: "media", required: true,
           admin: { description: { tr: "Telefon ekran görüntüsü. Önerilen genişlik: 560 piksel.", en: "The phone screenshot. Recommended width: 560px." } } },
@@ -1056,6 +1059,21 @@ const StepPhonesBlock: Block = {
           admin: { description: { tr: "Ürünün adı, örn: 'Faturana Yansıt'.", en: "The product name, e.g. 'Faturana Yansıt'." } } },
         { name: "description", label: { tr: "Açıklama", en: "Description" }, type: "textarea", required: true,
           admin: { description: { tr: "Ürünün kısa açıklaması.", en: "A short description of the product." } } },
+        // 01.09.2026 kullanıcı geri bildirimi: canlı sitede her adımın altında
+        // ilgili ürün sayfasına giden bir "Keşfet >" butonu var. Hedef sayfa
+        // serbest metin URL DEĞİL — editör sadece yayında/public olan bir
+        // Page seçebiliyor (filterOptions), böylece kırık link riski yok.
+        { name: "ctaLabel", label: { tr: "Buton Yazısı", en: "Button Label" }, type: "text", defaultValue: "Keşfet",
+          admin: { description: { tr: "Adımın altındaki bağlantı butonunun yazısı. ctaPage boşsa buton hiç gösterilmez.", en: "The label of the link button under the step. If ctaPage is empty, no button is shown." } } },
+        { name: "ctaPage", label: { tr: "Yönlendirilecek Sayfa", en: "Target Page" }, type: "relationship", relationTo: "pages",
+          filterOptions: () => ({ _status: { equals: "published" }, visibility: { equals: "public" } }),
+          admin: { description: { tr: "Butona basılınca gidilecek sayfa — sadece yayında ve herkese açık (public) sayfalar arasından seçilir.", en: "The page the button links to — pickable only from published, public pages." } } },
+        // 01.09.2026 kullanıcı geri bildirimi: telefon görseli solda dururken
+        // sağ tarafa opsiyonel bir arkaplan görseli (örn. Vodafone Pay logolu)
+        // eklenebilmeli — ama metnin ÜSTÜNE değil, ALTINA/arkasına düşmeli
+        // (bkz. StepPhones.tsx'teki z-index sırası).
+        { name: "backgroundImage", label: { tr: "Arkaplan Görseli (opsiyonel)", en: "Background Image (optional)" }, type: "upload", relationTo: "media",
+          admin: { description: { tr: "Metnin arkasında, altında kalacak dekoratif bir görsel (örn. Vodafone Pay logosu). Metnin okunabilirliğini bozmamalı. Boş bırakılabilir.", en: "A decorative image that sits behind/under the text (e.g. the Vodafone Pay logo). Must not interfere with text readability. Optional." } } },
       ],
     },
   ],
