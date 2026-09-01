@@ -23,15 +23,23 @@ oc login https://api.tst-vcloud.vpara.local:6443 -u <user>
 oc project vepas-ai-am
 ```
 
-**1) Image pull secret — namespace'te ZATEN VAR, yeni bir şey oluşturma**
-`vodafone-githubtest` (`containers.github.vpara.local` için) namespace'te
-hazır — genaiops-event-processor'ın ServiceAccount'u da (01.09.2026 sahada
-doğrulandı) aynısını kullanıyor. `k8s/serviceaccount.yaml` bunu zaten
-referans veriyor, ayrıca bir şey oluşturmana gerek yok — sadece var olduğunu
-doğrula:
+**1) Image pull secret**
+
+⚠️ 01.09.2026 sahada bulundu: namespace'in paylaşılan `vodafone-githubtest`
+secret'ı Clover için `denied` ile patladı (arkasındaki hesabın `vepas-ai/
+clover` reposuna erişimi yok — bkz. `k8s/serviceaccount.yaml`'ın kendi notu).
+Bunun yerine pipeline'ın PUSH için kullandığı — kesin erişimi olan —
+kimlikle kendi pull secret'ımızı oluşturuyoruz. En hızlı yol: pipeline zaten
+runner'da `docker login containers.github.vpara.local` yapmış oluyor
+(`Log in to Container Registry` adımı), o oturumun `~/.docker/config.json`'ını
+doğrudan kullan:
 ```bash
-oc get secret vodafone-githubtest
+oc create secret generic clover-pull-secret --from-file=.dockerconfigjson=/root/.docker/config.json --type=kubernetes.io/dockerconfigjson -n vepas-ai-am
 ```
+(Registry token'ı elle biliyorsan alternatif: `oc create secret
+docker-registry clover-pull-secret --docker-server=containers.github.vpara.local
+--docker-username=<REGISTRY_LOGIN_USERNAME> --docker-password=<REGISTRY_LOGIN_TOKEN>
+-n vepas-ai-am`.)
 
 **2) Uygulama Secret'ı**
 ```bash
