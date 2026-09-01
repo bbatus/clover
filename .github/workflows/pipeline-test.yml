@@ -250,6 +250,25 @@ jobs:
             -u "${OPENSHIFT_TEST_USER}" -p "${OPENSHIFT_TEST_PASSWORD}"
           oc project "${OPENSHIFT_NAMESPACE}"
 
+      # 01.09.2026 sahada bulundu: namespace'in paylaşılan pull secret'ı
+      # (`vodafone-githubtest`) bu repoya erişimi olmayan bir hesaba ait
+      # çıktı, kendi `clover-pull-secret`'ımızı elle (runner'ın o anki
+      # `~/.docker/config.json`'ından) oluşturduk — ama bu STATİK değil,
+      # GHES registry'nin verdiği oturum bazlı bir kimlik bilgisiydi ve bir
+      # sonraki pipeline çalışmasında eski kaldı ("denied", imaj gerçekten
+      # registry'de duruyordu). Kalıcı çözüm: bu adımı HER çalışmada, aynı
+      # `REGISTRY_LOGIN_USERNAME`/`REGISTRY_LOGIN_TOKEN` ile (docker
+      # login'in kullandığı aynı kimlik) yeniden oluştur — `--dry-run=client
+      # -o yaml | oc apply -f -` idempotent, secret yoksa oluşturur, varsa
+      # üzerine yazar.
+      - name: Refresh image pull secret (kimlik her çalıştırmada yenilenir)
+        run: |
+          oc create secret docker-registry clover-pull-secret \
+            --docker-server="${REGISTRY_URL}" \
+            --docker-username="${{ vars.REGISTRY_LOGIN_USERNAME }}" \
+            --docker-password="${{ secrets.REGISTRY_LOGIN_TOKEN }}" \
+            --dry-run=client -o yaml | oc apply -f -
+
       # ⚠️ ConfigMap (clover-config), Secret (clover-secret), Route ve MinIO
       #    (clover-minio, k8s/minio.yaml) BURADA UYGULANMAZ. Bunlar Faz 0'da elle,
       #    BİR KEZ kurulur (bkz. DEPLOYMENT_RUNBOOK.md) — pipeline onlara bir daha
