@@ -281,6 +281,39 @@ const CampaignGridBlock: Block = {
       validate: categoryExistsValidate(CATEGORY_SCOPES.CAMPAIGN),
       admin: { components: { Field: { path: "/components/CategorySlugSelect#default", clientProps: { scope: "campaign" } } } },
     },
+    // 01.09.2026 kullanıcı geri bildirimi: kategori seçildiğinde, o
+    // kategorideki TÜM kampanyaların otomatik gösterilmesi yerine, editör bu
+    // alandan HANGİLERİNİ anasayfada göstermek istediğini seçebilmeli
+    // (Payload'ın hasMany relationship'i checkbox listesi gibi çalışır).
+    // Boş bırakılırsa (geriye dönük uyumluluk) eski davranış korunur —
+    // kategorideki tüm kampanyalar gösterilir (bkz. [...slug]/page.tsx).
+    {
+      name: "campaigns",
+      label: { tr: "Gösterilecek Kampanyalar", en: "Campaigns to Show" },
+      type: "relationship",
+      relationTo: "campaigns",
+      hasMany: true,
+      admin: {
+        description: {
+          tr: "Önce yukarıdan bir kategori seçin — burada sadece o kategorideki kampanyalar listelenir. Hiç seçim yapmazsanız kategorideki TÜM kampanyalar gösterilir.",
+          en: "Pick a category above first — only that category's campaigns are listable here. If you select none, ALL campaigns in the category are shown.",
+        },
+        condition: (_, siblingData) => Boolean(siblingData?.category),
+      },
+      filterOptions: async ({ siblingData, req }) => {
+        const categorySlug = (siblingData as { category?: string } | undefined)?.category;
+        if (!categorySlug) return false;
+        const categories = await req.payload.find({
+          collection: "categories",
+          where: { slug: { equals: categorySlug } },
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        });
+        const categoryId = categories.docs[0]?.id;
+        return categoryId ? { category: { equals: categoryId } } : false;
+      },
+    },
   ],
 };
 
