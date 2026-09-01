@@ -128,6 +128,13 @@ spec:
       containers:
         - name: mc
           image: minio/mc:latest
+          # 01.09.2026 sahada bulundu: `mc` config'ini varsayılan olarak
+          # $HOME/.mc'ye yazıyor, $HOME de image'ın varsayılanıyla `/` oluyor
+          # — OCP'nin restricted-v2 SCC'si rastgele/non-root UID atadığı için
+          # `mkdir /.mc: permission denied`. HOME'u her UID'in yazabileceği
+          # /tmp'e çekiyoruz.
+          env:
+            - { name: HOME, value: /tmp }
           envFrom:
             - configMapRef: { name: clover-config }   # S3_BUCKET
             - secretRef:    { name: clover-secret }    # MINIO_ROOT_USER / MINIO_ROOT_PASSWORD
