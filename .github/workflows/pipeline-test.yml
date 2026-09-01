@@ -199,6 +199,9 @@ jobs:
       # öncesi COPY'liyor, sonrasında SİLİYOR (image'a parola gömülmesin).
       - name: Create .npmrc from NPM_PROXY_SETTING (npm install'ın Docker build içindeki proxy erişimi için)
         shell: bash
+        env:
+          MEND_PROXY_USER: ${{ vars.MEND_PROXY_USER }}
+          MEND_PROXY_PASSWORD: ${{ secrets.MEND_PROXY_PASSWORD }}
         run: |
           set -e
           RAW_SETTING='${{ vars.NPM_PROXY_SETTING }}'
@@ -206,9 +209,18 @@ jobs:
             echo "::error::vars.NPM_PROXY_SETTING tanımlı değil — npm install Docker build içinde ağa çıkamayacak."
             exit 1
           fi
+          # user:pass bir URL'nin içine gömülüyor (proxy=http://user:pass@host).
+          # Parola @, :, / gibi URL-özel karakterler içeriyorsa çıplak substitution
+          # URL'yi bozar — Node'un URL parser'ı ilk "@"da host'a geçer, parolanın
+          # geri kalanı URL'nin geçersiz parçası olur (01.09.2026 sahada bulundu:
+          # "DeprecationWarning: The URL http://srvc.mend.jenkins:u is invalid").
+          # Percent-encode ediyoruz — parolanın gerçek değeri her ne olursa olsun
+          # sonuç her zaman geçerli bir URL parçası.
+          ENCODED_USER="$(node -e 'process.stdout.write(encodeURIComponent(process.env.MEND_PROXY_USER))')"
+          ENCODED_PASSWORD="$(node -e 'process.stdout.write(encodeURIComponent(process.env.MEND_PROXY_PASSWORD))')"
           echo "$RAW_SETTING" > .npmrc
-          sed -i "s/{{MEND_PROXY_USER}}/${{ vars.MEND_PROXY_USER }}/g" .npmrc
-          sed -i "s|{{MEND_PROXY_PASSWORD}}|${{ secrets.MEND_PROXY_PASSWORD }}|g" .npmrc
+          sed -i "s/{{MEND_PROXY_USER}}/${ENCODED_USER}/g" .npmrc
+          sed -i "s|{{MEND_PROXY_PASSWORD}}|${ENCODED_PASSWORD}|g" .npmrc
 
       - name: Build image
         run: ${{ steps.engine.outputs.bin }} build -t "${{ steps.img.outputs.image }}" -f Containerfile .
