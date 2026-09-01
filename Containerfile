@@ -13,10 +13,22 @@ RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+# .npmrc* (optional — wildcard so local/dev builds without one still work):
+# on the CI runner it's generated from the org's NPM_PROXY_SETTING variable
+# right before `docker build` (see pipeline-test.yml) — this network requires
+# going through a corporate proxy for the public npm registry, and unlike the
+# runner's own `npm ci` step, a `RUN npm install` inside an isolated Docker
+# build stage does NOT inherit the runner's proxy config, so without this file
+# the install has no route out (found live 01.09.2026: hung indefinitely).
+COPY package.json package-lock.json* .npmrc* ./
 
 RUN --mount=type=cache,target=/root/.npm \
   npm install --no-audit --no-fund
+
+# Never ship proxy credentials in a layer — the file only needs to exist
+# during this RUN, and only dependencies/node_modules is copied into the
+# next stage anyway, but scrub it here too in case that ever changes.
+RUN rm -f .npmrc
 
 FROM node:${NODE_VERSION} AS builder
 

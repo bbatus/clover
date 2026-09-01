@@ -188,8 +188,37 @@ jobs:
           echo "${{ secrets.REGISTRY_LOGIN_TOKEN }}" | ${{ steps.engine.outputs.bin }} login "${{ env.REGISTRY_URL }}" \
             -u "${{ vars.REGISTRY_LOGIN_USERNAME }}" --password-stdin
 
+      # 01.09.2026 sahada bulundu: `docker build`'in içindeki `npm install`
+      # (Containerfile'ın `dependencies` stage'i) runner'ın kendi `npm ci`
+      # adımının aksine host'un proxy config'ini miras almıyor — izole build
+      # container'ının bu kapalı ağda registry.npmjs.org'a doğrudan çıkışı yok,
+      # ağa çıkmaya çalışıp süresiz asılı kalıyordu. Çözüm: org'un zaten
+      # tanımlı `NPM_PROXY_SETTING` değişkenini (mend.yml'in MAVEN_SETTING'i
+      # için yaptığı aynı `{{PLACEHOLDER}}` deseni) gerçek değerlerle doldurup
+      # `.npmrc` olarak build context'e yaz — Containerfile bunu `npm install`
+      # öncesi COPY'liyor, sonrasında SİLİYOR (image'a parola gömülmesin).
+      - name: Create .npmrc from NPM_PROXY_SETTING (npm install'ın Docker build içindeki proxy erişimi için)
+        shell: bash
+        run: |
+          set -e
+          RAW_SETTING='${{ vars.NPM_PROXY_SETTING }}'
+          if [[ -z "$RAW_SETTING" ]]; then
+            echo "::error::vars.NPM_PROXY_SETTING tanımlı değil — npm install Docker build içinde ağa çıkamayacak."
+            exit 1
+          fi
+          echo "$RAW_SETTING" > .npmrc
+          sed -i "s/{{MEND_PROXY_USER}}/${{ vars.MEND_PROXY_USER }}/g" .npmrc
+          sed -i "s|{{MEND_PROXY_PASSWORD}}|${{ secrets.MEND_PROXY_PASSWORD }}|g" .npmrc
+
       - name: Build image
         run: ${{ steps.engine.outputs.bin }} build -t "${{ steps.img.outputs.image }}" -f Containerfile .
+
+      # .npmrc yalnızca Containerfile'ın COPY'lediği build context'te durması
+      # gerekiyordu (image'ın kendisi zaten dosyayı build içinde siliyor) —
+      # runner'ın checkout'unda da kalmasın.
+      - name: Remove .npmrc from runner workspace
+        if: always()
+        run: rm -f .npmrc
 
       - name: Push image
         run: ${{ steps.engine.outputs.bin }} push "${{ steps.img.outputs.image }}"
