@@ -129,11 +129,14 @@ const HeroBlock: Block = {
       name: "heading",
       label: { tr: "Başlık", en: "Heading" },
       type: "text",
-      required: true,
+      // 01.09.2026 kullanıcı geri bildirimi: zorunlu tutmak, sadece görseli
+      // (örn. tam metinli bir banner) kullanmak isteyen bir editörü
+      // engelliyordu — artık opsiyonel, boşsa hiç render edilmiyor (bkz.
+      // ProductHero.tsx).
       admin: {
         description: {
-          tr: "Sayfanın en üstündeki büyük, kalın başlık. Kısa ve iddialı olsun. Örnek: \"Vodafone'lu Ol, Ödemenin Akıllı Halini Keşfet!\" · \"Faturana Yansıt, Sonra Öde\"",
-          en: "The large, bold heading at the top of the page. Keep it short and bold. E.g.: \"Vodafone'lu Ol, Ödemenin Akıllı Halini Keşfet!\" · \"Faturana Yansıt, Sonra Öde\"",
+          tr: "Sayfanın en üstündeki büyük, kalın başlık. Kısa ve iddialı olsun. Örnek: \"Vodafone'lu Ol, Ödemenin Akıllı Halini Keşfet!\" · \"Faturana Yansıt, Sonra Öde\". Boş bırakılabilir.",
+          en: "The large, bold heading at the top of the page. Keep it short and bold. E.g.: \"Vodafone'lu Ol, Ödemenin Akıllı Halini Keşfet!\" · \"Faturana Yansıt, Sonra Öde\". Optional.",
         },
       },
     },
