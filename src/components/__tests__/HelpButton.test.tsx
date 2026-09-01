@@ -57,4 +57,29 @@ describe("HelpButton", () => {
     fireEvent.click(toggle);
     expect(screen.queryByText("Kullanıcılar")).not.toBeInTheDocument();
   });
+
+  it("closes when Escape is pressed", () => {
+    setLocale("tr");
+    mockUseAuth.mockReturnValue({ user: { role: "GROWTH_MAKER" } });
+    render(<HelpButton collection="users" />);
+    fireEvent.click(screen.getByRole("button", { name: "?" }));
+    expect(screen.getByText("Kullanıcılar")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByText("Kullanıcılar")).not.toBeInTheDocument();
+  });
+
+  it("closes when clicking outside the panel", () => {
+    setLocale("tr");
+    mockUseAuth.mockReturnValue({ user: { role: "GROWTH_MAKER" } });
+    render(
+      <div>
+        <div data-testid="outside">Dışarı</div>
+        <HelpButton collection="users" />
+      </div>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "?" }));
+    expect(screen.getByText("Kullanıcılar")).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByTestId("outside"));
+    expect(screen.queryByText("Kullanıcılar")).not.toBeInTheDocument();
+  });
 });

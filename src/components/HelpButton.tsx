@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { HELP_CONTENT } from "@/lib/helpContent";
@@ -21,12 +21,33 @@ export default function HelpButton({ collection }: { collection: string }) {
   const { user } = useAuth();
   const entry = HELP_CONTENT[collection];
   const permissions = getRolePermissionSummary(collection, (user as { role?: string } | undefined)?.role, locale);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // 01.09.2026 kullanıcı geri bildirimi: panel Escape ile kapanmıyordu —
+  // klavyeden erişilebilirlik için standart davranış. Dışına tıklayınca
+  // kapanmak da aynı gerekçeyle eklendi (aç/kapa tek yol değil butonla
+  // sınırlı kalmasın).
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const onClickOutside = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onClickOutside);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onClickOutside);
+    };
+  }, [open]);
 
   if (!entry && !permissions) return null;
   const content = entry?.[locale];
 
   return (
-    <div className="help-button">
+    <div className="help-button" ref={rootRef}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

@@ -949,7 +949,11 @@ a {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #fafafa;
-  max-width: 640px;
+  /* 01.09.2026 kullanıcı geri bildirimi: sabit 640px, dar/mobil ekranlarda
+     admin sidebar'ın gerçek genişliğini aşıp panel taşmasına/yatay kaydırmaya
+     yol açıyordu — viewport'a göre sınırlandı, box-sizing garanti altına alındı. */
+  max-width: min(640px, calc(100vw - 2rem));
+  box-sizing: border-box;
 }
 
 .help-button__panel-title {
