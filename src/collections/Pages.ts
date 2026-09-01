@@ -825,14 +825,33 @@ const FeatureHighlightsBlock: Block = {
     },
     {
       name: "media",
-      label: { tr: "Medya", en: "Media" },
+      label: { tr: "Medya (Görsel)", en: "Media (Image)" },
       type: "upload",
       relationTo: "media",
       admin: {
         description: {
-          tr: "Sağdaki büyük görsel (masaüstünde görünür). Boş bırakılırsa sitenin kendi tanıtım videosu gösterilir.",
-          en: "The large image on the right (desktop only). Leave empty to show the site's own promo video instead.",
+          tr: "Sağdaki büyük görsel (masaüstünde görünür). Bu doluysa aşağıdaki video yok sayılır.",
+          en: "The large image on the right (desktop only). If this is set, the video below is ignored.",
         },
+      },
+    },
+    // 01.09.2026 kullanıcı geri bildirimi: bu alan yoktu, component sessizce
+    // hardcoded bir video dosyasına (/public/videos/feature-loop.mp4)
+    // düşüyordu — editör hiç video eklemediği halde anasayfada video
+    // oynuyordu. Artık gerçek bir CMS alanı: `media` boşsa VE bu doluysa bu
+    // video gösterilir, ikisi de boşsa hiçbir şey gösterilmez (hardcoded
+    // fallback tamamen kaldırıldı, bkz. FeatureHighlights.tsx).
+    {
+      name: "video",
+      label: { tr: "Medya (Video)", en: "Media (Video)" },
+      type: "upload",
+      relationTo: "media",
+      admin: {
+        description: {
+          tr: "Sağda döngüde oynayacak video (masaüstünde görünür, sessiz, otomatik oynar). Sadece yukarıdaki görsel BOŞSA kullanılır.",
+          en: "The video that loops on the right (desktop only, muted, autoplays). Only used when the image above is empty.",
+        },
+        condition: (_, siblingData) => !siblingData?.media,
       },
     },
     {
