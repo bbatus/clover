@@ -11,8 +11,21 @@ import type { NextRequest } from "next/server";
  * payload-lng cookie'sini tr olarak sabitler; kullanıcı admin panelinden
  * bilinçli olarak EN'e geçerse (Payload kendi cookie'sini günceller) bu
  * proxy tekrar müdahale etmez.
+ *
+ * 02.09.2026 kullanıcı geri bildirimi: test ortamındaki route çıplak halde
+ * (clover-vepas-ai-am.apps.tst-vcloud.vpara.local, /admin olmadan) 404
+ * basıyordu — `src/app/(payload)` sadece /admin ve /api altını kapsıyor, `/`
+ * için hiç sayfa yok. Editör bu adrese geldiğinde login ekranını görmeli.
+ * Ayrı bir `app/page.tsx` eklemek root layout (html/body) gerektirdiği için
+ * en az riskli yol burada tek satırlık bir yönlendirme — bu dosya zaten
+ * Next'in tek proxy giriş noktası (middleware.ts bu Next sürümünde proxy.ts
+ * ile birlikte kullanılamıyor, build hatası veriyor).
  */
 export function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === "/") {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
   if (request.cookies.has("payload-lng")) {
     return NextResponse.next();
   }
@@ -24,5 +37,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/admin/:path*",
+  matcher: ["/", "/admin/:path*"],
 };
