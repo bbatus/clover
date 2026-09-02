@@ -119,10 +119,13 @@ const HeroBlock: Block = {
     plural: { tr: "Hero Blokları", en: "Hero Blocks" },
   },
   admin: {
-    images: blockThumb(
-      `<rect x="20" y="20" width="440" height="150" rx="10" fill="url(#heroGrad)"/><circle cx="380" cy="55" r="26" fill="#ffffff" opacity="0.14"/><rect x="46" y="150" width="180" height="26" rx="4" fill="#ffffff" opacity="0.95"/><text x="52" y="169" font-family="Arial, sans-serif" font-size="17" font-weight="700" fill="#e60000">Pay</text><text x="240" y="105" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff">Vodafone'lu Ol!</text><text x="240" y="132" font-family="Arial, sans-serif" font-size="14" fill="#ffe5e5">Ödemenin akıllı haliyle tanış</text><text x="46" y="216" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#111827">Ödemenin Akıllı Hali</text><text x="46" y="240" font-family="Arial, sans-serif" font-size="12" fill="#6b7280">Hemen Vodafone Pay'e geç, alışverişini tek dokunuşla tamamla.</text><rect x="46" y="256" width="130" height="30" rx="6" fill="#e60000"/><text x="60" y="276" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#ffffff">Hemen Başla</text>`,
-      vfImageFill("heroGrad")
-    ),
+    // 02.09.2026 kullanıcı geri bildirimi: blok seçerken görünen önizleme,
+    // elle çizilmiş bir SVG taslağı yerine bloğun SİTEDE gerçekten nasıl
+    // göründüğünün ekran görüntüsü olsun — "akıllarında canlansın". Görsel
+    // anasayfanın hero bölümünden alındı (1030x491 → 480x229),
+    // public/block-thumbs/ altında duruyor. Beğenilirse aynısı diğer bloklara
+    // da yapılacak; şimdilik sadece hero deneniyor.
+    images: { thumbnail: { url: "/block-thumbs/hero.png", alt: "" } },
   },
   fields: [
     {
