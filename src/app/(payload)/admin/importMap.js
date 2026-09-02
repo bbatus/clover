@@ -49,6 +49,7 @@ import { default as default_48bd4f5ed20a278ca9298ebbc521db88 } from '../../../co
 import { default as default_90eec4338e568ac23e5e1ee037b0943f } from '../../../components/GroupedNavLink'
 import { default as default_595e3a4f6a24edcc1de7f22e9ce336d3 } from '../../../components/LoginBrandPanel'
 import { default as default_03f8dc0800d7b765aae92bcca91546b8 } from '../../../components/RememberEmailCheckbox'
+import { default as default_strip_login_redirect_param } from '../../../components/StripLoginRedirectParam'
 import { default as default_3f15fbd92be2c91e4a0bf602ad604a7b } from '../../../components/SidebarLogo'
 import { default as default_492d0c8eaa15dcc6b7fe2f570ab62107 } from '../../../components/LocalePreferenceSync'
 import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
@@ -115,6 +116,7 @@ export const importMap = {
   "/components/GroupedNavLink#default": default_90eec4338e568ac23e5e1ee037b0943f,
   "/components/LoginBrandPanel#default": default_595e3a4f6a24edcc1de7f22e9ce336d3,
   "/components/RememberEmailCheckbox#default": default_03f8dc0800d7b765aae92bcca91546b8,
+  "/components/StripLoginRedirectParam#default": default_strip_login_redirect_param,
   "/components/SidebarLogo#default": default_3f15fbd92be2c91e4a0bf602ad604a7b,
   "/components/LocalePreferenceSync#default": default_492d0c8eaa15dcc6b7fe2f570ab62107,
   "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24,

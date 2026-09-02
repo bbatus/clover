@@ -7,6 +7,9 @@ import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
 import { ROLES } from "@/access/roleConstants";
 
+/** Same set of collections that set `versions.drafts.validate: true` server-side — see Campaigns.ts. */
+const COLLECTIONS_WITH_DRAFT_VALIDATION = new Set(["campaigns"]);
+
 /**
  * RFP feedback: "taslağı kaydet dedi mesela onaya gönder demesi lazımdı" —
  * a Growth Maker's own draft save reads as "just saving," with no signal
@@ -41,7 +44,19 @@ export default function SaveOrSubmitButton() {
     const idSegment = id ? `/${id}` : "";
     const path = globalSlug ? `/globals/${globalSlug}${search}` : `/${collectionSlug}${idSegment}${search}`;
     const action = formatAdminURL({ apiRoute: config.routes.api, path: path as `/${string}` });
-    await submit({ action, method: id ? "PATCH" : "POST", overrides: { _status: "draft" } });
+    // 02.09.2026 kullanıcı geri bildirimi: bir Growth Maker taslağını
+    // kaydedemiyordu (örn. henüz medya eklemediği bir Sayfa) — Payload'ın
+    // kendi varsayılan SaveDraftButton'ı draft kaydında her zaman
+    // `skipValidation: true` gönderir (bkz. @payloadcms/ui
+    // elements/SaveDraftButton), bu sarmalayıcı onu unutmuştu ve
+    // client-side zorunlu-alan doğrulaması save'i tamamen engelliyordu —
+    // sunucu tarafında (versions.drafts.validate) izin verilse bile.
+    // Campaigns bilinçli olarak `versions.drafts.validate: true` ile
+    // taslakta da zorunlu alan istiyor (bkz. Campaigns.ts) — client
+    // tarafını da onunla tutarlı tutuyoruz, diğer her koleksiyonda
+    // (validate:true DEMEYEN) taslak serbestçe kaydedilebilsin diye.
+    const skipValidation = !COLLECTIONS_WITH_DRAFT_VALIDATION.has(collectionSlug ?? "");
+    await submit({ action, method: id ? "PATCH" : "POST", overrides: { _status: "draft" }, skipValidation });
     setUnpublishedVersionCount((count) => count + 1);
   }, [disabled, globalSlug, collectionSlug, id, localeCode, config.routes.api, submit, setUnpublishedVersionCount]);
 

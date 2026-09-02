@@ -1298,29 +1298,144 @@ const VideoListBlock: Block = {
 const VideosWithTabsMarkerBlock: Block = {
   slug: "videosWithTabsMarker",
   labels: {
-    // The label itself carries the "nothing to edit" note — Payload's Block
-    // type has no `admin.description` (field-level only), and this block is
-    // deliberately fields:[] so there's nowhere else to put it.
-    singular: {
-      tr: "Sekmeli Video Tanıtımı (Sabit, Düzenlenemez)",
-      en: "Tabbed Video Showcase (Fixed, Not Editable)",
-    },
-    plural: {
-      tr: "Sekmeli Video Tanıtımları (Sabit, Düzenlenemez)",
-      en: "Tabbed Video Showcases (Fixed, Not Editable)",
-    },
+    singular: { tr: "Sekmeli Video Tanıtımı", en: "Tabbed Video Showcase" },
+    plural: { tr: "Sekmeli Video Tanıtımları", en: "Tabbed Video Showcases" },
   },
-  fields: [],
+  fields: [
+    {
+      name: "tabs",
+      label: { tr: "Sekmeler", en: "Tabs" },
+      type: "array",
+      labels: { singular: { tr: "Sekme", en: "Tab" }, plural: { tr: "Sekmeler", en: "Tabs" } },
+      admin: {
+        description: {
+          tr: "Her satır bir sekme (üstteki geçiş butonu) ve altında gösterilecek kartları taşır. Boş bırakırsanız blok hiç görünmez.",
+          en: "Each row is one tab (the pill at the top) plus the cards shown under it. Leave empty and the block renders nothing.",
+        },
+      },
+      fields: [
+        {
+          name: "label",
+          label: { tr: "Sekme Başlığı", en: "Tab Label" },
+          type: "text",
+          required: true,
+          admin: {
+            description: {
+              tr: "Sekme butonunun üzerindeki yazı. Örnek: \"Faturana Yansıt'ı alışverişte nasıl kullanırım?\".",
+              en: "Text on the tab button. E.g.: \"Faturana Yansıt'ı alışverişte nasıl kullanırım?\".",
+            },
+          },
+        },
+        {
+          name: "items",
+          label: { tr: "Kartlar", en: "Cards" },
+          type: "array",
+          labels: { singular: { tr: "Kart", en: "Card" }, plural: { tr: "Kartlar", en: "Cards" } },
+          minRows: 1,
+          fields: [
+            {
+              name: "label",
+              label: { tr: "Kart Başlığı", en: "Card Title" },
+              type: "text",
+              required: true,
+              admin: { description: { tr: "Kartın altındaki yazı, örn: \"Google Play\".", en: "The text under the card, e.g.: \"Google Play\"." } },
+            },
+            {
+              name: "thumbnail",
+              label: { tr: "Kart Görseli (opsiyonel)", en: "Card Image (optional)" },
+              type: "upload",
+              relationTo: "media",
+              admin: {
+                description: {
+                  tr: "Kartın içindeki görsel — genelde videodan alınmış bir kapak görüntüsü. Boş bırakılırsa yerine sade bir oynat ikonu gösterilir. Önerilen ölçü: 180x280 piksel.",
+                  en: "The image inside the card — usually a still from the video. If empty, a plain play icon is shown instead. Recommended size: 180x280px.",
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
+  ],
 };
 
-/** See VideosWithTabsMarkerBlock's comment — same reasoning, for LeadFormCta.tsx. */
+/**
+ * 02.09.2026 kullanıcı geri bildirimi: "form çağrısı bannerı ve sekmeli
+ * video tanıtımı düzenlenemez durumda... image'ini benim seçmem lazım."
+ * Her ikisi de `fields: []` bir "marker" bloğuydu — site tarafındaki
+ * bileşen kendi sabit görselini/metnini basıyordu (LeadFormCta.tsx'te
+ * /images/leadform-banner.svg + /faturana-yansit'a özel sabit metin). O
+ * tasarım sadece tek bir sayfa için doğruydu; blok artık başka ürün
+ * sayfalarında da kullanıldığı için görsel ve metin gerçekten editörün
+ * seçtiği şey olmalı. Alanların hepsi opsiyonel — boş bırakılırsa bileşen
+ * eski sabit görünümünü koruyor, böylece bu bloğu zaten kullanan bir sayfa
+ * hiç bozulmuyor.
+ */
 const LeadFormCtaBlock: Block = {
   slug: "leadFormCta",
   labels: {
-    singular: { tr: "Form Çağrısı Bannerı (Sabit, Düzenlenemez)", en: "Lead Form Banner (Fixed, Not Editable)" },
-    plural: { tr: "Form Çağrısı Bannerları (Sabit, Düzenlenemez)", en: "Lead Form Banners (Fixed, Not Editable)" },
+    singular: { tr: "Form Çağrısı Bannerı", en: "Lead Form Banner" },
+    plural: { tr: "Form Çağrısı Bannerları", en: "Lead Form Banners" },
   },
-  fields: [],
+  fields: [
+    {
+      name: "backgroundImage",
+      label: { tr: "Arkaplan Görseli (opsiyonel)", en: "Background Image (optional)" },
+      type: "upload",
+      relationTo: "media",
+      admin: {
+        description: {
+          tr: "Bannerın arkaplanı — genelde kırmızı Vodafone Pay görseli. Boş bırakılırsa varsayılan banner görseli kullanılır. Önerilen ölçü: 1030x160 piksel.",
+          en: "The banner's background — usually the red Vodafone Pay artwork. If empty, the default banner image is used. Recommended size: 1030x160px.",
+        },
+      },
+    },
+    {
+      name: "icon",
+      label: { tr: "İkon (opsiyonel)", en: "Icon (optional)" },
+      type: "upload",
+      relationTo: "media",
+      admin: {
+        description: {
+          tr: "Metnin solunda görünen küçük ikon (64x64 piksel önerilir). Boş bırakılırsa varsayılan ikon kullanılır.",
+          en: "The small icon to the left of the text (64x64px recommended). If empty, the default icon is used.",
+        },
+      },
+    },
+    {
+      name: "text",
+      label: { tr: "Metin", en: "Text" },
+      type: "textarea",
+      admin: {
+        description: {
+          tr: "Bannerdaki çağrı metni. Boş bırakılırsa varsayılan metin kullanılır.",
+          en: "The banner's call-to-action text. If empty, the default text is used.",
+        },
+      },
+    },
+    {
+      name: "ctaLabel",
+      label: { tr: "Buton Yazısı", en: "Button Label" },
+      type: "text",
+      admin: {
+        description: {
+          tr: "Buton üzerindeki yazı. Boş bırakılırsa \"Formu doldurun\" yazar.",
+          en: "The text on the button. Defaults to \"Formu doldurun\" if empty.",
+        },
+      },
+    },
+    {
+      name: "ctaUrl",
+      label: { tr: "Buton Linki", en: "Button Link" },
+      type: "text",
+      admin: {
+        description: {
+          tr: "Butona tıklayınca gidilecek adres, örn: /iletisim veya https://... . Boş bırakılırsa buton tıklanabilir olmaz.",
+          en: "Where the button goes, e.g.: /iletisim or https://... . If empty, the button isn't clickable.",
+        },
+      },
+    },
+  ],
 };
 
 /**

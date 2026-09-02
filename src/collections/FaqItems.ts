@@ -5,28 +5,8 @@ import { authenticated, publishedOrAuthenticated, denyUnauthenticatedDraftRead }
 import { denyMakerEditPublished, denyMakerPublish, standardCreate, standardDelete, standardReadWrite } from "@/access/roles";
 import { setOwnerOnCreate } from "@/hooks/ownership";
 import { dbLabel } from "@/lib/collectionLabels";
-import {
-  assignFooterOrder,
-  assignNextFlaggedOrder,
-  assignNextOrder,
-  FOOTER_ORDER_FIELD_DESCRIPTION,
-  FOOTER_ORDER_MAX,
-  orderField,
-} from "@/hooks/ordering";
+import { assignFooterOrder, assignNextOrder, FOOTER_ORDER_FIELD_DESCRIPTION, FOOTER_ORDER_MAX, orderField } from "@/hooks/ordering";
 import { CATEGORY_SCOPES } from "@/collections/Categories";
-
-/**
- * Only assigns when the question is actually flagged for the homepage;
- * nothing to number otherwise. The implementation lives in
- * `hooks/ordering.ts` — it used to be a local hook here with a note saying
- * it stayed local until a second caller needed the same shape; Pages'
- * `showInProductsMenu`/`productsMenuOrder` became that caller.
- */
-const assignNextHomepageOrder = assignNextFlaggedOrder({
-  collection: "faq-items",
-  flagField: "showOnHomepage",
-  orderField: "homepageOrder",
-});
 
 export const FaqItems: CollectionConfig = {
   slug: "faq-items",
@@ -44,7 +24,7 @@ export const FaqItems: CollectionConfig = {
   admin: {
     hideAPIURL: true,
     useAsTitle: "question",
-    defaultColumns: ["question", "category", "showOnHomepage", "order", "createdAt", "_status"],
+    defaultColumns: ["question", "category", "order", "createdAt", "_status"],
     group: { tr: "İçerik Yönetimi", en: "Content Management" },
     components: {
       edit: {
@@ -125,65 +105,6 @@ export const FaqItems: CollectionConfig = {
         },
       },
     },
-    {
-      // RFP follow-up: the homepage's own SSS block used to just be
-      // `getFaqItems("anasayfa")` — "show on homepage" and "category" were
-      // the same signal, so a question couldn't belong to a real product
-      // category (e.g. "Anında Bakiye") AND appear on the homepage too.
-      // This is a second, independent signal on top of `category`, not a
-      // replacement for it — the existing "Anasayfa" category stays exactly
-      // what it is (its own tab on /sikca-sorulan-sorular), this just adds
-      // "...and also show it on /".
-      //
-      // Follow-up 30.08, found by the user: as of a real `anasayfa` Pages
-      // document existing and being published, this checkbox is a SAFETY NET,
-      // not a live control. `getHomepageFaqItems()` (which reads this flag)
-      // is only ever called from `page.tsx`'s CMS-unreachable fallback
-      // branch — the same class of trap AGENTS.md already documents for
-      // `ContentBlocks`/`stepPhones` (a real caller that stopped being the
-      // one actually reached the day a Pages document took over). The
-      // description below says so explicitly so an editor checking this box
-      // isn't misled into thinking it changes the current live homepage —
-      // that's the `anasayfa` Page's own SSS Bloğu (Kategori seçimi).
-      name: "showOnHomepage",
-      type: "checkbox",
-      defaultValue: false,
-      label: { tr: "Anasayfada Göster", en: "Show on Homepage" },
-      admin: {
-        description: {
-          tr: "Şu an canlı anasayfayı ETKİLEMİYOR — anasayfadaki SSS bölümü, Sayfalar'daki 'Anasayfa' kaydının kendi SSS Bloğu (Kategori seçimiyle) tarafından yönetiliyor. Bu kutu sadece o Sayfa kaydı silinir/yayından kalkarsa devreye giren bir yedek gösterimdir.",
-          en: "Does NOT affect the current live homepage — the homepage's FAQ section is controlled by the 'Anasayfa' Page record's own FAQ Block (its Category pick). This checkbox only takes over as a fallback if that Page record is ever deleted or unpublished.",
-        },
-      },
-    },
-    {
-      // Independent from `order` on purpose: `order` is scoped per-category
-      // (assignNextOrder below), so two homepage-flagged questions from
-      // different categories could both be "order: 1" — meaningless for
-      // deciding which comes first on the homepage. Only relevant, and only
-      // shown, when showOnHomepage is checked.
-      name: "homepageOrder",
-      type: "number",
-      label: { tr: "Anasayfa Sırası", en: "Homepage Order" },
-      min: 1,
-      admin: {
-        condition: (data) => Boolean(data?.showOnHomepage),
-        description: {
-          tr: "Anasayfadaki SSS bloğunda gösterim sırası. Boş bırakılırsa otomatik olarak sona eklenir.",
-          en: "Position within the homepage FAQ block. Leave empty to append to the end automatically.",
-        },
-        // RFP follow-up (§3.1): live "N kayıt var, önerilen sıra: M" line
-        // under the input, recomputed as `showOnHomepage` is toggled. Purely
-        // informational — see LiveOrderField.tsx's doc comment for why it
-        // never auto-fills the value itself.
-        components: {
-          Field: {
-            path: "/components/LiveOrderField#default",
-            clientProps: { collection: "faq-items", watchPath: "showOnHomepage", mode: "boolean" },
-          },
-        },
-      },
-    },
     orderField({ collection: "faq-items", watchPath: "category", mode: "relationship" }),
     {
       // RFP follow-up: footer'daki "Sık Sorulanlar" sütunu artık sabit
@@ -236,7 +157,6 @@ export const FaqItems: CollectionConfig = {
     beforeChange: [
       setOwnerOnCreate("createdBy"),
       assignNextOrder("faq-items", ["category"]),
-      assignNextHomepageOrder,
       assignFooterOrder("faq-items"),
       denyMakerEditPublished,
       denyMakerPublish,

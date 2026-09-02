@@ -234,7 +234,11 @@ export default buildConfig({
         Logo: "/components/AdminLogo#default",
         Icon: "/components/AdminIcon#default",
       },
-      beforeLogin: ["/components/LoginBrandPanel#default", "/components/RememberEmailCheckbox#default"],
+      beforeLogin: [
+        "/components/LoginBrandPanel#default",
+        "/components/RememberEmailCheckbox#default",
+        "/components/StripLoginRedirectParam#default",
+      ],
       // RFP follow-up: `beforeDashboard` only PREPENDS content above
       // Payload's own default dashboard grid (every collection as a link
       // card) — it can't remove it. Full replacement now happens via

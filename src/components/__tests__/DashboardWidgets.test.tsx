@@ -13,6 +13,7 @@ vi.mock("@/access/roles", async () => {
 vi.mock("@/lib/approvalQueue", () => ({
   loadPendingApprovals: vi.fn().mockResolvedValue([]),
   loadOwnPendingDrafts: vi.fn().mockResolvedValue([]),
+  hrefFor: (slug: string, id: string | number) => `/admin/collections/${slug}/${id}`,
 }));
 
 const { loadPendingApprovals, loadOwnPendingDrafts } = await import("@/lib/approvalQueue");
@@ -28,6 +29,18 @@ function fakePayload(overrides: Partial<Payload> = {}): Payload {
 
 const i18n = (language: "tr" | "en" = "tr") => ({ language }) as never;
 
+/**
+ * The widget makes two different audit-log queries (logins, and content
+ * create/update/publish). A single blanket `find` mock would answer both with
+ * the same rows and make each assertion ambiguous, so route by the query.
+ */
+function findByAction({ login = [], changes = [] }: { login?: unknown[]; changes?: unknown[] }) {
+  return vi.fn().mockImplementation((args: { where?: Record<string, unknown> }) => {
+    const isChangeQuery = Array.isArray(args?.where?.and);
+    return Promise.resolve({ docs: isChangeQuery ? changes : login });
+  });
+}
+
 describe("DashboardWidgets", () => {
   it("shows the recent-logins widget for a Growth Maker with no drafts", async () => {
     const payload = fakePayload();
@@ -39,14 +52,39 @@ describe("DashboardWidgets", () => {
 
   it("renders recent login rows with role label, timestamp and IP", async () => {
     const payload = fakePayload({
-      find: vi.fn().mockResolvedValue({
-        docs: [{ userEmail: "a@vodafone.local", userRole: ROLES.GROWTH_MAKER, createdAt: "2026-01-01T10:00:00.000Z", ip: "10.0.0.1" }],
+      find: findByAction({
+        login: [{ userEmail: "a@vodafone.local", userRole: ROLES.GROWTH_MAKER, createdAt: "2026-01-01T10:00:00.000Z", ip: "10.0.0.1" }],
       }),
     });
     const el = await DashboardWidgets({ payload, user: { id: "1", role: ROLES.GROWTH_MAKER }, i18n: i18n() });
     render(el);
     expect(screen.getByText("a@vodafone.local")).toBeInTheDocument();
     expect(screen.getByText("10.0.0.1")).toBeInTheDocument();
+  });
+
+  /**
+   * 02.09.2026: content changes are what an editor actually needs at a glance,
+   * so the audit log's create/update/publish entries get their own panel above
+   * the logins table.
+   */
+  it("lists recent content changes with a link to the document", async () => {
+    const payload = fakePayload({
+      find: findByAction({
+        changes: [
+          {
+            collectionSlug: "pages",
+            documentId: "12",
+            summary: "Anasayfa güncellendi",
+            userEmail: "maker@vodafone.local",
+            createdAt: "2026-01-02T09:00:00.000Z",
+          },
+        ],
+      }),
+    });
+    render(await DashboardWidgets({ payload, user: { id: "1", role: ROLES.GROWTH_MAKER }, i18n: i18n() }));
+    expect(screen.getByText("Son Güncellenen İçerikler")).toBeInTheDocument();
+    expect(screen.getByText("Anasayfa güncellendi")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Aç/ })).toHaveAttribute("href", "/admin/collections/pages/12");
   });
 
   /**

@@ -75,7 +75,7 @@ const HIDDEN_COLLECTION_HREF: Record<string, string> = {
   documents: "/admin/collections/legal-pages",
 };
 
-const hrefFor = (slug: string, id: string | number) =>
+export const hrefFor = (slug: string, id: string | number) =>
   HIDDEN_COLLECTION_HREF[slug] ?? `/admin/collections/${slug}/${id}`;
 
 type VersionRow = {

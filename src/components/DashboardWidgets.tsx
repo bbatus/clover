@@ -9,8 +9,47 @@ import {
 } from "@/lib/collectionLabels";
 import { loadDbStrings } from "@/lib/loadDbStrings";
 import { applyPlaceholder } from "@/lib/translationDefaults";
-import { loadOwnPendingDrafts, loadPendingApprovals, type ApprovalItem } from "@/lib/approvalQueue";
+import { hrefFor, loadOwnPendingDrafts, loadPendingApprovals, type ApprovalItem } from "@/lib/approvalQueue";
 import { IconCheckCircle, IconDraft, IconUsers } from "./DashboardIcons";
+
+type RecentChange = {
+  collectionSlug: string;
+  collectionLabel: string;
+  summary: string;
+  userEmail: string;
+  createdAt: string;
+  href?: string;
+};
+
+/**
+ * 02.09.2026 kullanıcı geri bildirimi: "son giriş yapanlar değil de son
+ * güncellenen içerikler alanı gelsin, giriş yapanları biraz daha alta
+ * alabiliriz." Audit log zaten her create/update/publish'i koleksiyon +
+ * doküman id'siyle yazıyor (AuditLogs.ts), yani ayrı bir sorgu şemasına
+ * gerek yok — sadece rolün kendi kapsamındaki koleksiyonlara filtreliyoruz.
+ */
+async function loadRecentChanges(payload: Payload, slugs: string[], locale: "tr" | "en"): Promise<RecentChange[]> {
+  const { docs } = await payload.find({
+    collection: "audit-logs",
+    where: {
+      and: [{ action: { in: ["create", "update", "publish"] } }, { collectionSlug: { in: slugs } }],
+    },
+    sort: "-createdAt",
+    limit: 8,
+    depth: 0,
+    overrideAccess: true,
+  });
+  return (docs as unknown as { collectionSlug?: string; documentId?: string; summary: string; userEmail: string; createdAt: string }[]).map(
+    (d) => ({
+      collectionSlug: d.collectionSlug ?? "",
+      collectionLabel: d.collectionSlug ? COLLECTION_LABELS[d.collectionSlug]?.[locale] ?? d.collectionSlug : "",
+      summary: d.summary,
+      userEmail: d.userEmail,
+      createdAt: d.createdAt,
+      href: d.collectionSlug && d.documentId ? hrefFor(d.collectionSlug, d.documentId) : undefined,
+    })
+  );
+}
 
 type LoginEntry = {
   userEmail: string;
@@ -141,6 +180,9 @@ export default async function DashboardWidgets({
     loginsTitle: tt("dashboardWidgets.loginsTitle"),
     noLogins: tt("dashboardWidgets.noLogins"),
     distinctUsers: tt("dashboardWidgets.distinctUsers"),
+    recentTitle: tt("dashboardWidgets.recentTitle"),
+    recentEmpty: tt("dashboardWidgets.recentEmpty"),
+    recentOpenCta: tt("dashboardWidgets.recentOpenCta"),
     ownDraftsTitle: tt("dashboardWidgets.ownDraftsTitle"),
     ownDraftsEmpty: tt("dashboardWidgets.ownDraftsEmpty"),
     ownDraftsPending: tt("dashboardWidgets.ownDraftsPending"),
@@ -150,7 +192,42 @@ export default async function DashboardWidgets({
 
   // RFP feedback 3.6/3.7: "her kullanıcı için" — recent logins (with IP) are
   // not role-restricted; every role sees who's been logging in.
-  const [logins, distinctUsers] = await Promise.all([loadRecentLogins(payload), loadDistinctLoginUserCount(payload)]);
+  const [logins, distinctUsers, recentChanges] = await Promise.all([
+    loadRecentLogins(payload),
+    loadDistinctLoginUserCount(payload),
+    loadRecentChanges(payload, collectionSlugs, locale),
+  ]);
+
+  // Sits directly above the logins table in both role branches — the user's
+  // own ordering call: what changed in the content matters more day-to-day
+  // than who signed in.
+  const recentChangesWidget = (
+    <div className="cm-widget">
+      <p className="cm-widget__title">
+        <IconDraft />
+        {t.recentTitle}
+      </p>
+      <div className="card cm-widget__body">
+        {recentChanges.length === 0 ? (
+          <p className="cm-widget__empty">{t.recentEmpty}</p>
+        ) : (
+          <table className="cm-widget-table">
+            <tbody>
+              {recentChanges.map((c, i) => (
+                <tr key={`${c.collectionSlug}-${c.createdAt}-${i}`}>
+                  <td>{c.collectionLabel && <span className="cm-badge">{c.collectionLabel}</span>}</td>
+                  <td>{c.summary}</td>
+                  <td>{c.userEmail}</td>
+                  <td>{new Date(c.createdAt).toLocaleString(locale === "tr" ? "tr-TR" : "en-US")}</td>
+                  <td>{c.href && <a href={c.href}>{t.recentOpenCta}</a>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
   const loginsWidget = (
     <div className="cm-widget">
       <p className="cm-widget__title">
@@ -221,6 +298,7 @@ export default async function DashboardWidgets({
             )}
           </div>
         </div>
+        {recentChangesWidget}
         {loginsWidget}
       </div>
     );
@@ -284,6 +362,7 @@ export default async function DashboardWidgets({
           </div>
         </div>
       )}
+      {recentChangesWidget}
       {loginsWidget}
     </div>
   );
