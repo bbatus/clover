@@ -48,3 +48,8 @@ temp/
 # SonarQube user token — generated once from the SonarQube UI, read by
 # scripts/sonar-scan.sh. Never committed.
 .sonar-token
+
+# Payload generates this when the dev server runs; the codebase does not
+# import it and it currently breaks `tsc --noEmit` (and therefore the Docker
+# build) — see docs. Regenerate on demand with `npm run generate:types`.
+payload-types.ts
