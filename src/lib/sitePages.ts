@@ -31,6 +31,17 @@ import { HAND_BUILT_ROUTES } from "@/lib/contentManagementTabs";
 
 export type SitePageSource = "static" | "cms" | "dynamic";
 
+/**
+ * The Pages slug that IS the homepage. The site serves that document at `/`
+ * (src/app/page.tsx) and 308-redirects `/anasayfa` to it, so the inventory
+ * must show ONE row — `/`, editable, pointing at the document — instead of the
+ * two it used to show: a "Sabit" `/` that no editor could touch and a separate
+ * `/anasayfa` URL that does not really exist. Mirrors the site's
+ * `src/lib/homepage.ts`.
+ */
+const HOMEPAGE_SLUG = "anasayfa";
+const HOMEPAGE_PATH = "/";
+
 export type SitePageEntry = {
   /** Live site path, e.g. "/blog". For dynamic groups this is the pattern, e.g. "/blog/[slug]". */
   path: string;
@@ -134,8 +145,9 @@ export async function loadSitePages(payload: Payload, locale: "tr" | "en"): Prom
     .filter((p) => p.slug)
     .map((p) => {
       const isDraft = p._status !== "published";
+      const isHomepage = p.slug === HOMEPAGE_SLUG;
       return {
-        path: `/${p.slug}`,
+        path: isHomepage ? HOMEPAGE_PATH : `/${p.slug}`,
         title: p.title || `/${p.slug}`,
         source: "cms" as const,
         editHref: `/admin/collections/pages/${p.id}`,

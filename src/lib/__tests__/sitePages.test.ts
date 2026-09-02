@@ -94,6 +94,34 @@ describe("loadSitePages", () => {
     expect(matching[0].editHref).toBe("/admin/collections/pages/2");
   });
 
+  /**
+   * 02.09.2026: the inventory showed the homepage TWICE — a "Sabit" `/` an
+   * editor could not open, plus a separate `/anasayfa` CMS row. There is only
+   * one homepage: the Pages document, served at `/`.
+   */
+  it("shows the homepage document once, at / and editable", async () => {
+    const entries = await loadSitePages(
+      fakePayload({ pages: [{ id: 9, title: "Anasayfa", slug: "anasayfa", _status: "published" }] }),
+      "tr"
+    );
+
+    expect(entries.filter((e) => e.path === "/anasayfa")).toHaveLength(0);
+    const homepage = entries.filter((e) => e.path === "/");
+    expect(homepage).toHaveLength(1);
+    expect(homepage[0].source).toBe("cms");
+    expect(homepage[0].editHref).toBe("/admin/collections/pages/9");
+    // One URL for the homepage, not two.
+    expect(countSiteUrls(entries)).toBe(HAND_BUILT_ROUTES.length);
+  });
+
+  it("still lists / as a hand-built route when no homepage document exists yet", async () => {
+    const entries = await loadSitePages(fakePayload({}), "tr");
+    const homepage = entries.filter((e) => e.path === "/");
+
+    expect(homepage).toHaveLength(1);
+    expect(homepage[0].source).toBe("static");
+  });
+
   it("only counts contract/form rows that actually produce a page URL", async () => {
     const entries = await loadSitePages(
       fakePayload({

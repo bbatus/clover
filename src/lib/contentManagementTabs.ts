@@ -239,6 +239,14 @@ export function tabLabel(slug: string, locale: "tr" | "en"): string {
  * list as it moves). Kept here (not fetched) rather than skipped, because
  * "no list exists for these" was the actual gap being reported, not "list
  * only what the API can see".
+ *
+ * 02.09.2026: exactly the drift this comment warns about had happened —
+ * `/vodafone-pay-kart` and `/faturana-yansit` were still listed as hand-built
+ * routes long after they became Pages documents (there is no
+ * `src/app/vodafone-pay-kart` on the site any more). In an environment whose
+ * database does not have those Pages yet, the inventory therefore advertised
+ * two "Sabit" pages that nothing can serve and nobody can edit — they 404.
+ * Both removed; the Pages collection is what lists them now.
  */
 export const SITE_ROUTES_TAB_SLUG = "site-routes";
 
@@ -251,8 +259,6 @@ export type SiteRoute = {
 
 export const HAND_BUILT_ROUTES: SiteRoute[] = [
   { path: "/", title: "Anasayfa", linkedFrom: { tr: "Logo", en: "Logo" } },
-  { path: "/vodafone-pay-kart", title: "Vodafone Pay Kart", linkedFrom: { tr: "Header → Ürünler", en: "Header → Products" } },
-  { path: "/faturana-yansit", title: "Faturana Yansıt", linkedFrom: { tr: "Header → Ürünler", en: "Header → Products" } },
   { path: "/kampanyalar", title: "Kampanyalar", linkedFrom: { tr: "Header → Ana Menü", en: "Header → Main menu" } },
   { path: "/blog", title: "Blog", linkedFrom: { tr: "Header → Ana Menü", en: "Header → Main menu" } },
   { path: "/ucretler-ve-limitler", title: "Ücretler ve Limitler", linkedFrom: { tr: "Header → Ana Menü", en: "Header → Main menu" } },
