@@ -125,6 +125,12 @@ spec:
       labels: { app: clover-minio, job: clover-minio-init }
     spec:
       restartPolicy: Never
+      # 15.09.2026 Fortify CF0A6495023DAEA5C529FDE3C0B6F076: bu Job'un
+      # seccompProfile'ı yoktu (Deployment'ınki zaten vardı, satır 50-52 —
+      # sadece bu Job atlanmıştı). Aynı pattern buraya da uygulandı.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
       containers:
         - name: mc
           image: minio/mc:latest
@@ -133,6 +139,10 @@ spec:
           # — OCP'nin restricted-v2 SCC'si rastgele/non-root UID atadığı için
           # `mkdir /.mc: permission denied`. HOME'u her UID'in yazabileceği
           # /tmp'e çekiyoruz.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # HOME=/tmp'e mc config'i yazıyor, kök dosya sistemi salt-okunur olamaz
+            capabilities: { drop: ["ALL"] }
           env:
             - { name: HOME, value: /tmp }
           envFrom:
