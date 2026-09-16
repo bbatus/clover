@@ -3,7 +3,8 @@ import type { CollectionBeforeChangeHook, CollectionBeforeOperationHook, Payload
 import { Media } from "@/collections/Media";
 
 const deriveMediaType = Media.hooks!.beforeChange![0] as CollectionBeforeChangeHook;
-const enforceFileSizeLimit = Media.hooks!.beforeChange![1] as CollectionBeforeChangeHook;
+const deriveAltFromFilename = Media.hooks!.beforeChange![1] as CollectionBeforeChangeHook;
+const enforceFileSizeLimit = Media.hooks!.beforeChange![2] as CollectionBeforeChangeHook;
 const skipCropForSvg = Media.hooks!.beforeOperation![1] as CollectionBeforeOperationHook;
 
 const req = (lang: "tr" | "en" = "tr") => ({ i18n: { language: lang } }) as unknown as PayloadRequest;
@@ -89,5 +90,49 @@ describe("skipCropForSvg", () => {
     const innerArgs = { data: { title: "unchanged" } };
     const hookArgs = { req: { file: { mimetype: "image/png" }, query: {} }, args: innerArgs };
     expect(skipCropForSvg(hookArgs as never)).toBe(innerArgs);
+  });
+});
+
+/**
+ * 16.09.2026: `alt` stopped being `required` so that uploading straight from
+ * a campaign/page field is never blocked by having to write alt text first
+ * (see the field's own comment in Media.ts). These cover the other half of
+ * that deal — it must still never end up empty.
+ */
+describe("deriveAltFromFilename", () => {
+  it("fills an empty alt from the file name, without the extension", () => {
+    const data: Record<string, unknown> = { alt: "", filename: "vodafone-pay-kart.jpg" };
+    deriveAltFromFilename({ data, req: req() } as never);
+    expect(data.alt).toBe("Vodafone pay kart");
+  });
+
+  it("turns underscores and repeated separators into single spaces", () => {
+    const data: Record<string, unknown> = { filename: "kampanya__gorseli--01.png" };
+    deriveAltFromFilename({ data, req: req() } as never);
+    expect(data.alt).toBe("Kampanya gorseli 01");
+  });
+
+  it("leaves an alt the editor actually wrote alone", () => {
+    const data: Record<string, unknown> = { alt: "Elimle yazdığım alt metin", filename: "x.jpg" };
+    deriveAltFromFilename({ data, req: req() } as never);
+    expect(data.alt).toBe("Elimle yazdığım alt metin");
+  });
+
+  it("treats a whitespace-only alt as empty and derives over it", () => {
+    const data: Record<string, unknown> = { alt: "   ", filename: "aninda-bakiye.jpg" };
+    deriveAltFromFilename({ data, req: req() } as never);
+    expect(data.alt).toBe("Aninda bakiye");
+  });
+
+  it("uppercases the first letter with Turkish rules", () => {
+    const data: Record<string, unknown> = { filename: "ilk-gorsel.jpg" };
+    deriveAltFromFilename({ data, req: req() } as never);
+    expect(data.alt).toBe("İlk gorsel");
+  });
+
+  it("leaves alt empty rather than inventing text when there is no filename either", () => {
+    const data: Record<string, unknown> = { alt: "" };
+    deriveAltFromFilename({ data, req: req() } as never);
+    expect(data.alt).toBe("");
   });
 });

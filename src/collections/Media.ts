@@ -23,6 +23,40 @@ const deriveMediaType: CollectionBeforeChangeHook = ({ data }) => {
   return data;
 };
 
+/**
+ * `alt` boş geldiğinde dosya adından okunabilir bir metin türetir — bkz.
+ * `alt` alanının kendi yorumu (16.09.2026): alan artık zorunlu değil ki bir
+ * kampanya/sayfa içinden yapılan hızlı yükleme alt metni yazma zorunluluğuna
+ * takılmasın, ama site bu değeri `<img alt>` olarak bastığı için boş da
+ * kalmamalı.
+ *
+ * Güncellemede de çalışır: editör alanı tamamen temizlerse yine dosya
+ * adından dolar. Bilinçli — "alt boş olabilir" durumunu hiç yaratmıyoruz;
+ * istenen metin farklıysa yazılacak yer zaten aynı alan.
+ *
+ * `data.filename`, Payload'ın `generateFileData()`'sı tarafından her
+ * beforeChange hook'undan ÖNCE set ediliyor (deriveMediaType'ın `mimeType`
+ * için dayandığı aynı sıralama), bu yüzden create'te de burada hazır.
+ */
+const deriveAltFromFilename: CollectionBeforeChangeHook = ({ data }) => {
+  const alt = typeof data?.alt === "string" ? data.alt.trim() : "";
+  if (alt) return data;
+
+  const filename = typeof data?.filename === "string" ? data.filename : "";
+  const derived = filename
+    .replace(/\.[^.]+$/, "") // uzantıyı at
+    .replace(/[-_]+/g, " ") // tire/alt tire → boşluk
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Dosya adı da yoksa (upload koleksiyonunda beklenmez) uydurma bir metin
+  // yazmaktansa boş bırak.
+  if (derived) {
+    data.alt = derived.charAt(0).toLocaleUpperCase("tr-TR") + derived.slice(1);
+  }
+  return data;
+};
+
 // RFP §3.1.4 "image size capability is necessary to ensure smooth
 // functioning": only Users.avatar had a cap (2MB) — general Media uploads
 // were unbounded. Payload's `upload` config has no built-in size-limit
@@ -113,10 +147,35 @@ export const Media: CollectionConfig = {
   },
   fields: [
     {
+      // 16.09.2026 kullanıcı geri bildirimi: "kişi normal akışta medyada önce
+      // görsel ekleyip sonra kampanya oluşturmalı ama direkt masaüstünden bir
+      // görsel seçerse yine de onu da medyalara kaydetmeliyiz, isimlendirilmemiş
+      // girebilir daha sonra ismini edit edebilir."
+      //
+      // Kaydın Medya'ya düşmesi zaten çalışıyordu: bir kampanya/sayfa
+      // içindeki görsel alanının "yeni yükle" sekmesi, Payload'ın kendi
+      // davranışıyla `/api/media`'ya POST edip gerçek bir Media dokümanı
+      // yaratıyor (@payloadcms/ui BulkUpload/FormsManager → actionURL =
+      // `${baseAPIPath}/${collectionSlug}`), yani dosya sonradan kütüphaneden
+      // tekrar seçilebiliyor. Akışı tıkayan şey bu alanın `required: true`
+      // olmasıydı — zorunlu alan doğrulaması TARAYICIDA koşuyor, yani editör
+      // alt metnini yazmadan yükleme çekmecesini kapatamıyordu.
+      //
+      // `required` kaldırıldı ama alan BOŞ DA BIRAKILMIYOR: aşağıdaki
+      // `deriveAltFromFilename` hook'u boşsa dosya adından bir değer yazıyor.
+      // Alanı tamamen opsiyonel yapıp boş geçmek gerçek bir erişilebilirlik
+      // kaybı olurdu (site bu değeri doğrudan `<img alt>` olarak basıyor);
+      // dosya adından türetilen metin mükemmel değil ama boştan kesinlikle
+      // iyi ve editör sonradan düzeltebiliyor.
       name: "alt",
       type: "text",
-      required: true,
       label: { tr: "Alternatif Metin (alt)", en: "Alt Text" },
+      admin: {
+        description: {
+          tr: "Görseli göremeyen (ekran okuyucu kullanan) ziyaretçiye görselin ne gösterdiğini anlatan kısa metin. Boş bırakırsanız dosya adından otomatik doldurulur — yükleme bu yüzden hiç engellenmez; sonradan buraya gelip daha açıklayıcı bir metinle değiştirebilirsiniz.",
+          en: "A short description of what the image shows, for visitors who can't see it (screen reader users). Leave it empty and it is auto-filled from the file name — so an upload is never blocked; come back and replace it with something more descriptive whenever you like.",
+        },
+      },
     },
     {
       name: "caption",
@@ -212,7 +271,7 @@ export const Media: CollectionConfig = {
   },
   hooks: {
     beforeOperation: [normalizeUploadFilename, skipCropForSvg],
-    beforeChange: [deriveMediaType, enforceFileSizeLimit, setOwnerOnCreate("uploadedBy")],
+    beforeChange: [deriveMediaType, deriveAltFromFilename, enforceFileSizeLimit, setOwnerOnCreate("uploadedBy")],
     beforeDelete: [blockDeleteIfReferenced("media")],
     afterChange: [auditAfterChange("media")],
     afterDelete: [auditAfterDelete("media")],
