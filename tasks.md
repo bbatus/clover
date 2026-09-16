@@ -1988,3 +1988,83 @@ ayrı bir iş), kullanıcıya ayrıca bildirildi.
 — eski, ayrı bir git worktree (muhtemelen önceki bir agent-team turundan
 kalma), kendi içinde eski `cms/`/`vodafonepaycomtr/` referansları taşıyor
 ama bu görevin kapsamı dışında; silinmedi.
+
+## 48. 'Ürünler' menüsü çift kayıt bug'ı + medyaya hızlı yükleme (16.09.2026)
+
+### 48a. Aynı sayfa 'Ürünler' menüsünde iki kez çıkıyordu
+
+**Bildirim:** "menü linklerinden bir menü linki yarattım ürünler sayfasında
+göster dedim, sonra sayfa oluştururken aynı url'i koymama rağmen matchleşmedi,
+ürünlerde 2 ayrı menü linki oluşturdu."
+
+**Kök neden:** Menünün İKİ kaynağı vardı — NavLinks(`section=header-products`)
+ve Pages(`showInProductsMenu`). `Header.tsx` ikisini birleştirip sıralıyor ama
+**href'e göre tekilleştirmiyordu**. (`sitemap.ts` tam bu dedupe'ı yapıyor,
+header'a hiç uygulanmamış.)
+
+**Karar (kullanıcı):** Tekilleştirme eklemek yerine ikinci kaynağı kaldır —
+çakışma filtrelenmiş değil, yapısal olarak imkânsız olsun.
+
+- [x] `NavLinks.ts`: `header-products` seçeneği kaldırıldı; `section`
+      açıklaması Ürünler'in artık Sayfalar'dan yönetildiğini söylüyor.
+      Kaybedilen yetenek (Ürünler'e dış bağlantı / Pages dokümanı olmayan
+      rota koyma) kodda açıkça yazılı — kaldırıldığı gün menüde ikisinden de
+      yoktu.
+- [x] `Pages.ts` + `helpContent.ts`: "bu, o menüye koymanın TEK yolu".
+- [x] Site: `Header.tsx` tek kaynağa indi; **`site-haritasi/page.tsx`**'in
+      "Ürünler" grubu da aynı kaynaktan yeniden kuruldu — o da
+      NavLinks(header-products)'tan besleniyordu, dokunulmasa sessizce
+      kaybolacaktı.
+- [x] `cms.ts`: `header-products` union'da "emekli" olarak kaldı — göçü
+      uygulanmamış bir DB hâlâ o değeri taşıyabilir; artık kimse okumuyor.
+- [x] Testler: bayat bir header-products satırının sayfayı ikinci kez
+      listelemediğini kanıtlayan regresyon testi + site haritasının Ürünler
+      grubunu Pages'ten kurduğunu kanıtlayan test.
+
+**DB — VERİ göçü (şema değil):**
+`scripts/nav-links-products-menu-migration-16-09-2026.sql`
+Mevcut 3 `header-products` kaydını (vodafone-pay-uygulama, vodafone-pay-kart,
+faturana-yansit) işaret ettikleri sayfanın kendi kutusuna taşıyor (etiket +
+sıra korunarak, `_pages_v` sürüm tablosu dahil), sonra ölü satırları siliyor.
+**Bu script çalıştırılmazsa o 3 ürün menüden sessizce kaybolur.**
+Doğrulama: gerçek DB'nin kopyası üzerinde koşuldu (3 sayfa güncellendi,
+0 kayıt taşınamadı, diğer bölümler bozulmadı), sonra gerçek DB'ye uygulandı.
+`enum_nav_links_section`'daki `header-products` değeri bilinçli düşürülmedi —
+Postgres enum değeri silmeyi desteklemiyor, kullanılmayan değer zararsız.
+
+### 48b. Masaüstünden hızlı yükleme alt metni zorunlu tutuyordu
+
+**İstek:** "direkt masaüstünden bir görsel seçerse yine de onu da medyalara
+kaydetmeliyiz, sonra kullanılabilir; isimlendirilmemiş girebilir, sonra
+ismini edit edebilir."
+
+**Bulgu:** Medya'ya kaydetme ZATEN çalışıyordu — içerik alanındaki "yeni
+yükle" sekmesi Payload'ın kendi davranışıyla `/api/media`'ya POST edip gerçek
+bir Media dokümanı yaratıyor, dosya sonradan kütüphaneden seçilebiliyor.
+Tıkanma `Media.alt`'ın `required: true` olmasıydı (zorunlu alan doğrulaması
+tarayıcıda koşuyor → çekmece kapanmıyordu).
+
+- [x] `alt` zorunlu olmaktan çıktı, ama boş da kalmıyor: yeni
+      `deriveAltFromFilename` hook'u dosya adından okunabilir metin türetiyor
+      ("vodafone-pay-kart.jpg" → "Vodafone pay kart"), editör sonradan
+      düzeltebiliyor. Sadece opsiyonel yapıp boş geçmek erişilebilirlik kaybı
+      olurdu — site bu değeri doğrudan `<img alt>` olarak basıyor.
+- [x] 6 yeni test (media.test.ts 14 → 20).
+
+**DB — ŞEMA göçü:** `scripts/clover-schema-migration-02-09-to-16-09-2026.sql`
+Payload `required: true`yu ÜST SEVİYE koleksiyon alanlarında gerçek NOT NULL'a
+çeviriyor (blok içindeki alanlarda çevirmiyor — 02.09'daki `hero.heading`
+değişikliğinin DB'ye dokunmamasının sebebi buydu, ikisi karıştırılmamalı).
+`media.alt` üzerindeki NOT NULL düşürüldü. Veri kaybı yok, idempotent,
+yerelde uygulandı ve doğrulandı.
+
+**KULLANICIYA HATIRLATMA — canlıya almadan önce 2 script çalıştırılmalı:**
+1. `scripts/nav-links-products-menu-migration-16-09-2026.sql` (veri)
+2. `scripts/clover-schema-migration-02-09-to-16-09-2026.sql` (şema)
+
+**DoD:** clover 572/572, site 394/394 test yeşil; site `tsc`/eslint temiz
+(clover'da `FeesAndLimitsApp.tsx`'te 2 tsc hatası var — bu turdan ÖNCE de
+vardı, dokunulmadı). Docker'da gerçek `--build` sonrası canlı doğrulama:
+Ürünler menüsü 6 ürün, her biri **tek kez**, sıra korunmuş; `/site-haritasi`
+Ürünler grubu aynı 6 kayıtla duruyor; clover build'inde "Header — Ürünler"
+seçeneği yok, `alt` alanı `required` taşımıyor.
