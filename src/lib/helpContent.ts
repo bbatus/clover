@@ -290,6 +290,7 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
         "Her link bir 'section'a aittir (örn. Header — Ana Menü, Footer — Yasal) — bu, linkin sitede nerede göründüğünü belirler.",
         "Liste üstündeki panelden aynı section içindeki linkleri sürükleyerek sıralayabilirsiniz; farklı section'lar birbirini etkilemez.",
         "'href' alanı hem site içi yol (/kampanyalar) hem dış link olabilir.",
+        "Üst menüdeki 'Ürünler' açılır listesi BURADAN yönetilmez: bir sayfayı oraya koymak için Sayfalar'daki o kaydı açıp \"'Ürünler' Menüsünde Göster\" kutusunu işaretleyin.",
       ],
     },
     en: {
@@ -298,6 +299,7 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
         "Each link belongs to a 'section' (e.g. Header — Main Menu, Footer — Legal) — this determines where it appears on the site.",
         "Use the panel above the list to drag-and-drop reorder links within the same section; different sections don't affect each other.",
         "'href' can be either an internal path (/kampanyalar) or an external link.",
+        "The top menu's 'Ürünler' dropdown is NOT managed here: to put a page in it, open that record in Pages and tick \"Show in the 'Products' Menu\".",
       ],
     },
   },

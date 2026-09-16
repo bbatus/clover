@@ -1678,8 +1678,8 @@ export const Pages: CollectionConfig = {
       admin: {
         position: "sidebar",
         description: {
-          tr: "İşaretlerseniz bu sayfa, header'daki 'Ürünler' açılır menüsünde otomatik listelenir — Menü Linkleri'ne ayrıca kayıt açmanıza gerek kalmaz. Menüde ancak sayfa YAYINLANDIĞINDA ve Görünürlük 'Herkese Açık' olduğunda çıkar.",
-          en: "Check this and the page is automatically listed in the header's 'Products' dropdown — no separate Nav Links record needed. It only appears once the page is PUBLISHED and its Visibility is 'Public'.",
+          tr: "İşaretlerseniz bu sayfa, header'daki 'Ürünler' açılır menüsünde otomatik listelenir. Bu, bir sayfayı o menüye koymanın TEK yoludur — Menü Linkleri koleksiyonunda 'Ürünler' diye bir bölüm artık yok (16.09.2026'da kaldırıldı: iki ayrı yol olduğu için aynı sayfa menüde iki kez çıkabiliyordu). Menüde ancak sayfa YAYINLANDIĞINDA ve Görünürlük 'Herkese Açık' olduğunda çıkar.",
+          en: "Check this and the page is automatically listed in the header's 'Products' dropdown. This is the ONLY way to put a page there — the Nav Links collection no longer has a 'Products' section (removed 16.09.2026: having two separate paths meant the same page could appear twice). It only appears once the page is PUBLISHED and its Visibility is 'Public'.",
         },
       },
     },
