@@ -1,5 +1,5 @@
 import { APIError, Forbidden } from "payload";
-import type { Access, CollectionBeforeChangeHook, Payload, PayloadRequest, Where } from "payload";
+import type { Access, CollectionBeforeChangeHook, GlobalBeforeChangeHook, Payload, PayloadRequest, Where } from "payload";
 import { ROLES } from "./roleConstants";
 import type { RoleValue } from "./roleConstants";
 
@@ -253,3 +253,16 @@ export async function hasActiveCheckerDelegate(payload: Payload, userId: string 
   });
   return totalDocs > 0;
 }
+
+/**
+ * 17.09.2026 — the same maker→checker pair for drafts-enabled GLOBALS
+ * (first user: FooterSettings). A global's beforeChange hook gets no
+ * `operation`, but a global always already exists, so every save is an
+ * update: these forward to the collection hooks with `operation: "update"`,
+ * which keeps one implementation of each rule instead of two.
+ */
+export const denyMakerPublishGlobal: GlobalBeforeChangeHook = (args) =>
+  denyMakerPublish({ ...args, operation: "update", collection: undefined as never, context: args.context });
+
+export const denyMakerEditPublishedGlobal: GlobalBeforeChangeHook = (args) =>
+  denyMakerEditPublished({ ...args, operation: "update", collection: undefined as never, context: args.context });

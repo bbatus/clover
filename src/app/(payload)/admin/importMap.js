@@ -39,18 +39,19 @@ import { ParagraphFeatureClient as ParagraphFeatureClient_e70f5e05f09f93e00b997e
 import { default as default_711bc278b156b086d4259b6330cee300 } from '../../../components/FooterOrderField'
 import { default as default_be85d66e6e8081b44bdd02f21d196473 } from '../../../components/CampaignsExportButton'
 import { default as default_ac1bfc79f9c031f2e7cc5c94a1ec554f } from '../../../components/RoleAwarePublishButton'
+import { default as default_74e26e073d98aa93235ff7c955ad2ce1 } from '../../../components/HomepageAwareTitleField'
 import { default as default_bb8b477b3b6df91ebf6ae3a2850b9d34 } from '../../../components/CategorySlugSelect'
 import { default as default_130ecbd76bd70cd9a95997b236b69841 } from '../../../components/CollectionBackedBlockNote'
 import { default as default_45d1ba887b94be4718c6285f137f8a54 } from '../../../components/BlockFieldAutoResolve'
 import { default as default_7fb370ae11a27d414a37ef953f1ef426 } from '../../../components/BlogPostsExportButton'
+import { default as default_5aae2a5a347f869cb905621b589d4c4b } from '../../../components/FooterSyncPanel'
 import { default as default_1b8b1ea81afc982cb43ddf312304f6a3 } from '../../../components/UserAvatarIcon'
 import { default as default_e30df20e416e78fe7950694ff579c893 } from '../../../components/AdminIcon'
 import { default as default_48bd4f5ed20a278ca9298ebbc521db88 } from '../../../components/AdminLogo'
 import { default as default_90eec4338e568ac23e5e1ee037b0943f } from '../../../components/GroupedNavLink'
 import { default as default_595e3a4f6a24edcc1de7f22e9ce336d3 } from '../../../components/LoginBrandPanel'
 import { default as default_03f8dc0800d7b765aae92bcca91546b8 } from '../../../components/RememberEmailCheckbox'
-import { default as default_strip_login_redirect_param } from '../../../components/StripLoginRedirectParam'
-import { default as default_homepage_aware_title_field } from '../../../components/HomepageAwareTitleField'
+import { default as default_cdeabc8f39afc92386aa12f12eaea5aa } from '../../../components/StripLoginRedirectParam'
 import { default as default_3f15fbd92be2c91e4a0bf602ad604a7b } from '../../../components/SidebarLogo'
 import { default as default_492d0c8eaa15dcc6b7fe2f570ab62107 } from '../../../components/LocalePreferenceSync'
 import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
@@ -107,18 +108,19 @@ export const importMap = {
   "/components/FooterOrderField#default": default_711bc278b156b086d4259b6330cee300,
   "/components/CampaignsExportButton#default": default_be85d66e6e8081b44bdd02f21d196473,
   "/components/RoleAwarePublishButton#default": default_ac1bfc79f9c031f2e7cc5c94a1ec554f,
+  "/components/HomepageAwareTitleField#default": default_74e26e073d98aa93235ff7c955ad2ce1,
   "/components/CategorySlugSelect#default": default_bb8b477b3b6df91ebf6ae3a2850b9d34,
   "/components/CollectionBackedBlockNote#default": default_130ecbd76bd70cd9a95997b236b69841,
   "/components/BlockFieldAutoResolve#default": default_45d1ba887b94be4718c6285f137f8a54,
   "/components/BlogPostsExportButton#default": default_7fb370ae11a27d414a37ef953f1ef426,
+  "/components/FooterSyncPanel#default": default_5aae2a5a347f869cb905621b589d4c4b,
   "/components/UserAvatarIcon#default": default_1b8b1ea81afc982cb43ddf312304f6a3,
   "/components/AdminIcon#default": default_e30df20e416e78fe7950694ff579c893,
   "/components/AdminLogo#default": default_48bd4f5ed20a278ca9298ebbc521db88,
   "/components/GroupedNavLink#default": default_90eec4338e568ac23e5e1ee037b0943f,
   "/components/LoginBrandPanel#default": default_595e3a4f6a24edcc1de7f22e9ce336d3,
   "/components/RememberEmailCheckbox#default": default_03f8dc0800d7b765aae92bcca91546b8,
-  "/components/StripLoginRedirectParam#default": default_strip_login_redirect_param,
-  "/components/HomepageAwareTitleField#default": default_homepage_aware_title_field,
+  "/components/StripLoginRedirectParam#default": default_cdeabc8f39afc92386aa12f12eaea5aa,
   "/components/SidebarLogo#default": default_3f15fbd92be2c91e4a0bf602ad604a7b,
   "/components/LocalePreferenceSync#default": default_492d0c8eaa15dcc6b7fe2f570ab62107,
   "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24,

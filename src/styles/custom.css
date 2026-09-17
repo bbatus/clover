@@ -2589,3 +2589,51 @@ a {
 .nav .nav__link[href="/admin/feedback"] {
   --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z'/%3E%3Cpath d='M7 11h10'/%3E%3Cpath d='M7 15h6'/%3E%3Cpath d='M7 7h8'/%3E%3C/svg%3E");
 }
+
+/* ---------------------------------------------------------------------
+   Footer Yönetimi — FooterSyncPanel (17.09.2026)
+--------------------------------------------------------------------- */
+.fsp {
+  margin: 0 0 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.fsp-title {
+  margin: 0;
+}
+
+.fsp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fsp-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fsp-section-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.fsp-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fsp-select {
+  min-width: 18rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-s);
+  background: var(--theme-input-bg, var(--theme-elevation-0));
+  color: var(--theme-elevation-800);
+}

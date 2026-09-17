@@ -2222,3 +2222,23 @@ menüsünden 3 ürün düşer.
 - Admin'de doğrulandı: blog düzenleme ekranında "Yayın Tarihi (opsiyonel)" ve "Daha Fazlasını Keşfedin — Yazılar (opsiyonel)" alanları açıklamalarıyla görünüyor (dev sunucu yeniden başlatıldıktan sonra).
 - Testler 580/580; tsc'deki 21 hata eskiden beri var, sayı değişmedi.
 - ⚠️ **Deploy öncesi:** sıra aynı. Önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql` (9. bölüm dahil). Clover ile site birlikte deploy edilmeli.
+
+## 57. Footer Yönetimi (global), SSS'den footer alanlarının kaldırılması, blog "Footer'da Göster" (17.09.2026)
+
+- Yeni global `FooterSettings` ("Footer Yönetimi", Site Yapısı):
+  - Tek kayıtta arka plan görseli, QR görseli ve LinkedIn adresi tutuluyor. Görsel alanlarında önerilen çözünürlük yazıyor: 1280×480 (2560×960), QR için 456×625 dikey PNG. Boş bırakılan görselin yerine sitenin varsayılanı kullanılıyor.
+  - Maker→checker: `versions.drafts`; `MakerAwarePublishButton`/`SaveOrSubmitButton`; `denyMakerPublishGlobal`/`denyMakerEditPublishedGlobal`. Bunlar `roles.ts` içinde, global hook'larda `operation` olmadığı için var olan hook'ları "update" olarak çağıran sarmalayıcılar ve test edildi. Ekranda HelpButton da var.
+  - Link sütunları bu global'e KOPYALANMADI. `FooterSyncPanel` (ui alanı, tr/en) kayıtların kendisini listeliyor ve drawer'da düzenlemeye açıyor: Menü Linkleri `footer-kurumsal`/`footer-yasal`, Blog ve Kampanyalar ise `showInFooter`. Böylece blog/kampanyadaki "Footer'da Göster" ile footer ekranı her zaman senkron kalıyor. Linkler oluşturma yetkisine bağlı.
+  - `rolePermissions` (matris + özet), `collectionLabels`, `helpContent` güncellendi.
+- `FaqItems`: `showInFooter`/`footerOrder` kaldırıldı. Canlı footer'da SSS sütunu yok, kullanıcı kararıyla silindi.
+- `BlogPosts`: `showInFooter` + `footerOrder` (1–7, unique; Kampanyalardaki desen).
+- **DB migration:** `scripts/clover-schema-migration-02-09-to-17-09-2026.sql` dosyasına 10. bölüm eklendi:
+  - 10a: `faq_items` ve `_faq_items_v` footer kolonları ile index'leri DROP. ⚠️ Mevcut SSS footer işaretleri kaybolur (bilinçli).
+  - 10b: blog footer kolonları ve index'leri.
+  - 10c: `footer_settings` / `_footer_settings_v` tabloları ve enum'ları.
+  - 10d: VERİ olarak yayında bir footer kaydı (LinkedIn adresi canlıdaki değer).
+  - Doğrulama: tüm zincir boş DB'ye yüklendi, `pg_dump --schema-only` dev DB ile satırı satırına aynı (11.931 satır).
+- Admin'de doğrulandı: Footer Yönetimi ekranında 4 liste, drawer açılışı, Taslağı Kaydet / Yayından Kaldır / Yayınla butonları ve görsel alanlarının açıklamaları görüldü (dev sunucu yeniden başlatıldıktan sonra).
+- Yerel dev veri: İletişim Bilgileri global'ine canlı değerler girildi; blog #1, #2 ve #4 footer'da gösterilecek şekilde işaretlendi.
+- Testler 583/583; tsc'deki 21 hata eskiden beri var, sayı değişmedi.
+- ⚠️ **Deploy öncesi:** sıra aynı. Önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql` (10. bölüm dahil). Clover ile site BİRLİKTE deploy edilmeli: yeni site `/globals/footer-settings` ve blog `showInFooter` alanını okuyor.

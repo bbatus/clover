@@ -4,6 +4,8 @@ import {
   campaignsCreate,
   campaignsReadWrite,
   denyMakerEditPublished,
+  denyMakerEditPublishedGlobal,
+  denyMakerPublishGlobal,
   denyMakerPublish,
   growthCreate,
   growthReadWrite,
@@ -201,5 +203,40 @@ describe("denyMakerEditPublished", () => {
     await expect(call(ROLES.NEW_VERTICAL_MAKER, "update", "published")).resolves.not.toThrow();
     await expect(call(ROLES.NEW_VERTICAL_CHECKER, "update", "published")).resolves.not.toThrow();
     await expect(call(ROLES.GROWTH_CHECKER, "update", "published")).resolves.not.toThrow();
+  });
+});
+
+/**
+ * 17.09.2026 — Footer Yönetimi is a global. Global beforeChange hooks get no
+ * `operation`, so the wrappers must still behave as an update: a Growth Maker
+ * can neither publish the footer nor overwrite the live one.
+ */
+describe("global maker/checker wrappers", () => {
+  const args = (role: string, data: Record<string, unknown>, originalDoc: Record<string, unknown>, draft = false) =>
+    ({
+      data,
+      originalDoc,
+      req: { user: { role }, query: draft ? { draft: true } : {}, t: ((k: string) => k) as never },
+      global: {} as never,
+      context: {},
+    }) as never;
+
+  it("denyMakerPublishGlobal blocks GROWTH_MAKER publishing a draft footer", async () => {
+    await expect(
+      denyMakerPublishGlobal(args(ROLES.GROWTH_MAKER, { _status: "published" }, { _status: "draft" }))
+    ).rejects.toThrow();
+  });
+
+  it("denyMakerPublishGlobal lets GROWTH_CHECKER publish", async () => {
+    await expect(
+      denyMakerPublishGlobal(args(ROLES.GROWTH_CHECKER, { _status: "published" }, { _status: "draft" }))
+    ).resolves.not.toThrow();
+  });
+
+  it("denyMakerEditPublishedGlobal blocks a direct GROWTH_MAKER write to the live footer, allows ?draft=true", async () => {
+    await expect(denyMakerEditPublishedGlobal(args(ROLES.GROWTH_MAKER, {}, { _status: "published" }))).rejects.toThrow();
+    await expect(
+      denyMakerEditPublishedGlobal(args(ROLES.GROWTH_MAKER, {}, { _status: "published" }, true))
+    ).resolves.not.toThrow();
   });
 });

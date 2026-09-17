@@ -9,6 +9,7 @@ import { dbLabel } from "@/lib/collectionLabels";
 import { CATEGORY_SCOPES } from "@/collections/Categories";
 import { turkishSlugify, uniqueSlug } from "@/lib/slugify";
 import { seoKeywordsField } from "@/lib/seoFields";
+import { assignFooterOrder, FOOTER_ORDER_FIELD_DESCRIPTION, FOOTER_ORDER_MAX } from "@/hooks/ordering";
 
 /**
  * RFP follow-up: was a manually-typed, `unique: true` text field — an
@@ -174,6 +175,43 @@ export const BlogPosts: CollectionConfig = {
       },
     },
     {
+      // 17.09.2026 kullanıcı: canlı footer'ın orta sütunu blog yazılarıdır
+      // ("QR ile Ödeme Nasıl Yapılır?", "Cashback Nedir?" …). Kampanyalardaki
+      // kutunun birebir aynısı — Footer Yönetimi ekranı da orta sütunu tam
+      // olarak bu alandan okur, yani iki yer aynı veriyi gösterir.
+      name: "showInFooter",
+      type: "checkbox",
+      defaultValue: false,
+      label: { tr: "Footer'da Göster", en: "Show in Footer" },
+      admin: {
+        position: "sidebar",
+        description: {
+          tr: "İşaretlenirse bu yazı, sitenin her sayfasındaki footer'ın orta sütununda (blog yazıları) görünür. Footer Yönetimi ekranında da aynı liste görünür.",
+          en: "If checked, this post appears in the middle (blog posts) column of the footer on every page. The Footer Management screen shows the same list.",
+        },
+      },
+    },
+    {
+      name: "footerOrder",
+      type: "number",
+      // Same race guard as Campaigns.footerOrder — see its comment.
+      unique: true,
+      label: { tr: "Footer Sırası", en: "Footer Order" },
+      min: 1,
+      max: FOOTER_ORDER_MAX,
+      admin: {
+        position: "sidebar",
+        condition: (data) => Boolean(data?.showInFooter),
+        description: FOOTER_ORDER_FIELD_DESCRIPTION,
+        components: {
+          Field: {
+            path: "/components/FooterOrderField#default",
+            clientProps: { collection: "blog-posts", watchPath: "showInFooter", max: FOOTER_ORDER_MAX },
+          },
+        },
+      },
+    },
+    {
       // 17.09.2026 kullanıcı: canlı blog detayının en altında "Daha
       // fazlasını keşfedin" başlığıyla 3 başka yazı kartı var. Editör isterse
       // hangi yazıların çıkacağını buradan seçer; boş bırakılırsa site aynı
@@ -242,7 +280,7 @@ export const BlogPosts: CollectionConfig = {
   hooks: {
     beforeOperation: [denyUnauthenticatedDraftRead],
     beforeValidate: [generateSlug],
-    beforeChange: [setOwnerOnCreate("createdBy"), denyMakerEditPublished, denyMakerPublish],
+    beforeChange: [setOwnerOnCreate("createdBy"), assignFooterOrder("blog-posts"), denyMakerEditPublished, denyMakerPublish],
     afterChange: [revalidateTag("blog-posts"), auditAfterChange("blog-posts")],
     afterDelete: [revalidateTagOnDelete("blog-posts"), auditAfterDelete("blog-posts")],
   },

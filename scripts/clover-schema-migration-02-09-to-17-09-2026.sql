@@ -36,6 +36,9 @@
 --      anasayfadaki bloğun carousel'e alınması (VERİ)
 --   9. Blog (17.09) → "Daha fazlasını keşfedin" için blog_posts_rels ve
 --      _blog_posts_v_rels (YENİ tablolar)
+--  10. Footer (17.09) → SSS'lerden footer kolonları DÜŞÜRÜLDÜ (VERİ KAYBI:
+--      "Footer'da Göster" işaretleri), blog_posts'a footer kolonları, YENİ
+--      footer_settings global tabloları + LinkedIn adresli ilk kayıt (VERİ)
 --
 -- NASIL DOĞRULANDI (elle türetilmedi): yerel geliştirme DB'sine Payload'ın
 -- kendi push-tabanlı şema senkronu uygulandı; ardından
@@ -394,5 +397,134 @@ BEGIN
             ADD CONSTRAINT _blog_posts_v_rels_parent_fk FOREIGN KEY (parent_id) REFERENCES public._blog_posts_v(id) ON DELETE CASCADE;
     END IF;
 END $$;
+
+
+-- -----------------------------------------------------------------------------
+-- 10a. SSS'lerin footer kolonları kaldırıldı (17.09.2026, kullanıcı kararı)
+--
+-- Canlı vodafonepay.com.tr footer'ında "Sık Sorulanlar" sütunu yok; site
+-- footer'ı canlıyla eşitlendi ve FaqItems'taki "Footer'da Göster" / "Footer
+-- Sırası" alanları kaldırıldı. ⚠️ VERİ KAYBI (bilinçli): hangi SSS'nin
+-- footer'da işaretli olduğu bilgisi silinir — sitede zaten hiçbir yerde
+-- gösterilmeyecek. IF EXISTS: tekrar çalıştırılabilir.
+-- -----------------------------------------------------------------------------
+DROP INDEX IF EXISTS public.faq_items_footer_order_idx;
+DROP INDEX IF EXISTS public._faq_items_v_version_version_footer_order_idx;
+ALTER TABLE public.faq_items
+    DROP COLUMN IF EXISTS show_in_footer,
+    DROP COLUMN IF EXISTS footer_order;
+ALTER TABLE public._faq_items_v
+    DROP COLUMN IF EXISTS version_show_in_footer,
+    DROP COLUMN IF EXISTS version_footer_order;
+
+
+-- -----------------------------------------------------------------------------
+-- 10b. Blog yazılarına "Footer'da Göster" (17.09.2026)
+--
+-- Canlı footer'ın orta sütunu blog yazılarıdır. Kampanyalardaki alanın
+-- birebir aynısı: show_in_footer + footer_order (UNIQUE — eşzamanlı kayıtta
+-- aynı sıraya düşmeyi engelleyen son savunma, bkz. Campaigns.footerOrder).
+-- Mevcut yazılar DEFAULT false ile footer'da DEĞİL başlar.
+-- -----------------------------------------------------------------------------
+ALTER TABLE public.blog_posts
+    ADD COLUMN IF NOT EXISTS show_in_footer boolean DEFAULT false,
+    ADD COLUMN IF NOT EXISTS footer_order numeric;
+ALTER TABLE public._blog_posts_v
+    ADD COLUMN IF NOT EXISTS version_show_in_footer boolean DEFAULT false,
+    ADD COLUMN IF NOT EXISTS version_footer_order numeric;
+CREATE UNIQUE INDEX IF NOT EXISTS blog_posts_footer_order_idx ON public.blog_posts USING btree (footer_order);
+CREATE INDEX IF NOT EXISTS _blog_posts_v_version_version_footer_order_idx ON public._blog_posts_v USING btree (version_footer_order);
+
+-- -----------------------------------------------------------------------------
+-- 10c. Footer Yönetimi global'i (17.09.2026) — YENİ tablolar
+--
+-- Arka plan görseli, QR görseli, LinkedIn adresi; taslak/yayın (maker→
+-- checker) için sürüm tablosu. Link sütunları burada TUTULMAZ — Menü
+-- Linkleri / Blog Yazıları / Kampanyalar kayıtlarının kendisinden okunur.
+-- Tekrar çalıştırılabilir: tablo zaten varsa blok hiçbir şey yapmaz.
+-- -----------------------------------------------------------------------------
+DO $$ BEGIN
+    CREATE TYPE public.enum_footer_settings_status AS ENUM ('draft', 'published');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+    CREATE TYPE public.enum__footer_settings_v_version_status AS ENUM ('draft', 'published');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$
+BEGIN
+    IF to_regclass('public.footer_settings') IS NULL THEN
+        CREATE TABLE public._footer_settings_v (
+            id integer NOT NULL,
+            version_background_image_id integer,
+            version_qr_image_id integer,
+            version_linkedin_url character varying,
+            version__status public.enum__footer_settings_v_version_status DEFAULT 'draft'::public.enum__footer_settings_v_version_status,
+            version_updated_at timestamp(3) with time zone,
+            version_created_at timestamp(3) with time zone,
+            created_at timestamp(3) with time zone DEFAULT now() NOT NULL,
+            updated_at timestamp(3) with time zone DEFAULT now() NOT NULL,
+            latest boolean
+        );
+        CREATE SEQUENCE public._footer_settings_v_id_seq
+            AS integer
+            START WITH 1
+            INCREMENT BY 1
+            NO MINVALUE
+            NO MAXVALUE
+            CACHE 1;
+        ALTER SEQUENCE public._footer_settings_v_id_seq OWNED BY public._footer_settings_v.id;
+        CREATE TABLE public.footer_settings (
+            id integer NOT NULL,
+            background_image_id integer,
+            qr_image_id integer,
+            linkedin_url character varying,
+            _status public.enum_footer_settings_status DEFAULT 'draft'::public.enum_footer_settings_status,
+            updated_at timestamp(3) with time zone,
+            created_at timestamp(3) with time zone
+        );
+        CREATE SEQUENCE public.footer_settings_id_seq
+            AS integer
+            START WITH 1
+            INCREMENT BY 1
+            NO MINVALUE
+            NO MAXVALUE
+            CACHE 1;
+        ALTER SEQUENCE public.footer_settings_id_seq OWNED BY public.footer_settings.id;
+        ALTER TABLE ONLY public._footer_settings_v ALTER COLUMN id SET DEFAULT nextval('public._footer_settings_v_id_seq'::regclass);
+        ALTER TABLE ONLY public.footer_settings ALTER COLUMN id SET DEFAULT nextval('public.footer_settings_id_seq'::regclass);
+        ALTER TABLE ONLY public._footer_settings_v
+            ADD CONSTRAINT _footer_settings_v_pkey PRIMARY KEY (id);
+        ALTER TABLE ONLY public.footer_settings
+            ADD CONSTRAINT footer_settings_pkey PRIMARY KEY (id);
+        CREATE INDEX _footer_settings_v_created_at_idx ON public._footer_settings_v USING btree (created_at);
+        CREATE INDEX _footer_settings_v_latest_idx ON public._footer_settings_v USING btree (latest);
+        CREATE INDEX _footer_settings_v_updated_at_idx ON public._footer_settings_v USING btree (updated_at);
+        CREATE INDEX _footer_settings_v_version_version__status_idx ON public._footer_settings_v USING btree (version__status);
+        CREATE INDEX _footer_settings_v_version_version_background_image_idx ON public._footer_settings_v USING btree (version_background_image_id);
+        CREATE INDEX _footer_settings_v_version_version_qr_image_idx ON public._footer_settings_v USING btree (version_qr_image_id);
+        CREATE INDEX footer_settings__status_idx ON public.footer_settings USING btree (_status);
+        CREATE INDEX footer_settings_background_image_idx ON public.footer_settings USING btree (background_image_id);
+        CREATE INDEX footer_settings_qr_image_idx ON public.footer_settings USING btree (qr_image_id);
+        ALTER TABLE ONLY public._footer_settings_v
+            ADD CONSTRAINT _footer_settings_v_version_background_image_id_media_id_fk FOREIGN KEY (version_background_image_id) REFERENCES public.media(id) ON DELETE SET NULL;
+        ALTER TABLE ONLY public._footer_settings_v
+            ADD CONSTRAINT _footer_settings_v_version_qr_image_id_media_id_fk FOREIGN KEY (version_qr_image_id) REFERENCES public.media(id) ON DELETE SET NULL;
+        ALTER TABLE ONLY public.footer_settings
+            ADD CONSTRAINT footer_settings_background_image_id_media_id_fk FOREIGN KEY (background_image_id) REFERENCES public.media(id) ON DELETE SET NULL;
+        ALTER TABLE ONLY public.footer_settings
+            ADD CONSTRAINT footer_settings_qr_image_id_media_id_fk FOREIGN KEY (qr_image_id) REFERENCES public.media(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
+-- 10d. VERİ: canlı sitedeki LinkedIn adresiyle yayınlanmış ilk kayıt. Görseller
+-- boş bırakılır — site bu durumda canlının kendi arka planını ve QR kartını
+-- kullanır. Kayıt zaten varsa (panelden kaydedilmişse) dokunulmaz.
+INSERT INTO public.footer_settings (linkedin_url, _status, updated_at, created_at)
+SELECT 'https://www.linkedin.com/company/vodafone-elektronik-para-ve-%C3%B6deme-hizmetleri-a-%C5%9F/', 'published', now(), now()
+WHERE NOT EXISTS (SELECT 1 FROM public.footer_settings);
+INSERT INTO public._footer_settings_v (version_linkedin_url, version__status, version_updated_at, version_created_at, latest)
+SELECT f.linkedin_url, 'published', now(), now(), true
+FROM public.footer_settings f
+WHERE NOT EXISTS (SELECT 1 FROM public._footer_settings_v);
 
 COMMIT;

@@ -11,7 +11,7 @@ import { COLLECTION_LABELS, DRAFT_ENABLED_COLLECTIONS } from "@/lib/collectionLa
  * collection; see the comment on each category for which collections use it
  * and why.
  */
-type Category = "standard" | "media" | "campaigns" | "users" | "audit-logs" | "contact-info";
+type Category = "standard" | "media" | "campaigns" | "users" | "audit-logs" | "contact-info" | "footer-settings";
 
 const CATEGORY_BY_COLLECTION: Record<string, Category> = {
   // create: standardCreate, update: standardReadWrite, delete: standardDelete
@@ -35,6 +35,9 @@ const CATEGORY_BY_COLLECTION: Record<string, Category> = {
   users: "users",
   "audit-logs": "audit-logs",
   "contact-info": "contact-info",
+  // Global (single record, no create/delete) with drafts: standardReadWrite +
+  // denyMakerPublishGlobal/denyMakerEditPublishedGlobal (globals/FooterSettings.ts)
+  "footer-settings": "footer-settings",
 };
 
 export type PermissionFlags = {
@@ -103,6 +106,12 @@ const MATRIX: Record<Category, Record<RoleValue, PermissionFlags>> = {
     [NV_CHECKER]: { view: true, create: false, update: true, publish: false, delete: false },
     [G_MAKER]: { view: false, create: false, update: false, publish: false, delete: false },
     [G_CHECKER]: { view: false, create: false, update: false, publish: false, delete: false },
+  },
+  "footer-settings": {
+    [NV_MAKER]: { view: true, create: false, update: true, publish: true, delete: false },
+    [NV_CHECKER]: { view: true, create: false, update: true, publish: true, delete: false },
+    [G_MAKER]: { view: true, create: false, update: true, publish: false, delete: false },
+    [G_CHECKER]: { view: true, create: false, update: true, publish: true, delete: false },
   },
 };
 
@@ -259,7 +268,9 @@ export function getRolePermissionSummary(
   if (category === "users") return { roleLabel, lines: usersSummaryLines(role, locale) };
   if (category === "contact-info") return { roleLabel, lines: contactInfoSummaryLines(flags, locale) };
 
-  const hasDrafts = DRAFT_ENABLED_COLLECTIONS.has(collectionSlug);
+  // footer-settings is a drafts-enabled global, deliberately kept out of
+  // DRAFT_ENABLED_COLLECTIONS (that set drives collection-API queries).
+  const hasDrafts = DRAFT_ENABLED_COLLECTIONS.has(collectionSlug) || collectionSlug === "footer-settings";
   return { roleLabel, lines: genericSummaryLines(flags, hasDrafts, locale) };
 }
 

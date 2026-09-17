@@ -373,4 +373,22 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
       ],
     },
   },
+  "footer-settings": {
+    tr: {
+      title: "Footer Yönetimi",
+      steps: [
+        "Bu tek bir kayıttır (global): footer arka planı, QR görseli ve LinkedIn adresi buradan yönetilir; alan boş bırakılırsa sitenin varsayılan görseli kullanılır.",
+        "Üstteki listeler ayrı bir kopya değildir — Menü Linkleri, Blog ve Kampanya kayıtlarının kendisini gösterir. Bir blog/kampanyayı footer'a eklemek, o kaydın 'Footer'da Göster' işaretini açmakla aynı şeydir.",
+        "Maker değişikliği taslak olarak onaya gönderir; Checker onaylayıp yayınlar. Yayındaki footer'ı Maker doğrudan değiştiremez.",
+      ],
+    },
+    en: {
+      title: "Footer Management",
+      steps: [
+        "This is a single record (global): the footer background, QR image and LinkedIn address are managed here; an empty field falls back to the site's default image.",
+        "The lists at the top are not a separate copy — they show the Nav Links, Blog and Campaign records themselves. Adding a blog post/campaign to the footer is the same as turning on that record's 'Show in footer' flag.",
+        "A Maker submits changes as a draft for approval; a Checker approves and publishes. A Maker cannot change the live footer directly.",
+      ],
+    },
+  },
 };

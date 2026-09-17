@@ -5,7 +5,7 @@ import { authenticated, publishedOrAuthenticated, denyUnauthenticatedDraftRead }
 import { denyMakerEditPublished, denyMakerPublish, standardCreate, standardDelete, standardReadWrite } from "@/access/roles";
 import { setOwnerOnCreate } from "@/hooks/ownership";
 import { dbLabel } from "@/lib/collectionLabels";
-import { assignFooterOrder, assignNextOrder, FOOTER_ORDER_FIELD_DESCRIPTION, FOOTER_ORDER_MAX, orderField } from "@/hooks/ordering";
+import { assignNextOrder, orderField } from "@/hooks/ordering";
 import { CATEGORY_SCOPES } from "@/collections/Categories";
 
 export const FaqItems: CollectionConfig = {
@@ -123,44 +123,11 @@ export const FaqItems: CollectionConfig = {
       },
     },
     orderField({ collection: "faq-items", watchPath: "category", mode: "relationship" }),
-    {
-      // RFP follow-up: footer'daki "Sık Sorulanlar" sütunu artık sabit
-      // kod/NavLinks değil, buradan yönetiliyor — işaretlenen sorular (en
-      // fazla FOOTER_ORDER_MAX tanesi) footer'da gösteriliyor.
-      name: "showInFooter",
-      type: "checkbox",
-      defaultValue: false,
-      label: { tr: "Footer'da Göster", en: "Show in Footer" },
-      admin: {
-        description: {
-          tr: "İşaretlenirse bu soru, sitenin her sayfasındaki footer'ın 'Sık Sorulanlar' sütununda görünür.",
-          en: "If checked, this question appears in the footer's 'Sık Sorulanlar' column on every page of the site.",
-        },
-      },
-    },
-    {
-      name: "footerOrder",
-      type: "number",
-      // Follow-up 25.08 — same race guard as Campaigns.footerOrder, see its
-      // comment: a Postgres UNIQUE constraint as a last-resort backstop for
-      // assignFooterOrder's read-then-write gap-fill (reproduced live: 3
-      // records shared one slot). NULL (not shown in footer) never
-      // collides with another NULL.
-      unique: true,
-      label: { tr: "Footer Sırası", en: "Footer Order" },
-      min: 1,
-      max: FOOTER_ORDER_MAX,
-      admin: {
-        condition: (data) => Boolean(data?.showInFooter),
-        description: FOOTER_ORDER_FIELD_DESCRIPTION,
-        components: {
-          Field: {
-            path: "/components/FooterOrderField#default",
-            clientProps: { collection: "faq-items", watchPath: "showInFooter", max: FOOTER_ORDER_MAX },
-          },
-        },
-      },
-    },
+    // 17.09.2026 (kullanıcı kararı): `showInFooter` / `footerOrder` kaldırıldı.
+    // Canlı vodafonepay.com.tr footer'ında "Sık Sorulanlar" sütunu yok; sitenin
+    // footer'ı canlıyla eşitlenince bu kutu hiçbir yerde render edilmez olacaktı
+    // (AGENTS.md: render edilmeyen alan bırakma). Kolonlar
+    // clover-schema-migration-02-09-to-17-09-2026.sql §10'da düşürülüyor.
     {
       name: "createdBy",
       type: "relationship",
@@ -174,7 +141,6 @@ export const FaqItems: CollectionConfig = {
     beforeChange: [
       setOwnerOnCreate("createdBy"),
       assignNextOrder("faq-items", ["category"]),
-      assignFooterOrder("faq-items"),
       denyMakerEditPublished,
       denyMakerPublish,
     ],
