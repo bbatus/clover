@@ -374,7 +374,6 @@ BEGIN
         ALTER TABLE ONLY public.blog_posts_rels
             ADD CONSTRAINT blog_posts_rels_parent_fk FOREIGN KEY (parent_id) REFERENCES public.blog_posts(id) ON DELETE CASCADE;
     END IF;
-
     IF to_regclass('public._blog_posts_v_rels') IS NULL THEN
         CREATE TABLE public._blog_posts_v_rels (
             id integer NOT NULL,
