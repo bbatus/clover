@@ -48,7 +48,7 @@ function FeeRowRow({ row, onSaved }: { row: FeeRow; onSaved: () => void }) {
   const locale = useAdminLocale();
   const t = useDbStrings(locale);
   const typeStrings = ROW_TYPE_STRINGS[locale] ?? ROW_TYPE_STRINGS.tr;
-  const [DocDrawer, DocToggler] = useDocumentDrawer({ collectionSlug: "fee-rows", id: row.id });
+  const [DocDrawer, DocToggler] = useDocumentDrawer({ collectionSlug: "fee-rows", id: row.id as number });
   const rowType = row.rowType ?? "fee";
   return (
     <tr>
@@ -71,7 +71,7 @@ function FeeRowRow({ row, onSaved }: { row: FeeRow; onSaved: () => void }) {
 
 function LimitTableRow({ lt, onSaved }: { lt: LimitTable; onSaved: () => void }) {
   const t = useDbStrings(useAdminLocale());
-  const [DocDrawer, DocToggler] = useDocumentDrawer({ collectionSlug: "limit-tables", id: lt.id });
+  const [DocDrawer, DocToggler] = useDocumentDrawer({ collectionSlug: "limit-tables", id: lt.id as number });
   return (
     <tr>
       <td>
