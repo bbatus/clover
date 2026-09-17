@@ -2156,3 +2156,9 @@ menüsünden 3 ürün düşer.
       `next dev` onu taze şemadan üretince bayat bir önceki sürümün maskelediği
       tip borcu açığa çıktı. Bu turda değişen dosyaların hepsi temiz. CI bu
       dosyayı üretmiyor.
+
+## 50. Admin logoları: topbar Vodafone logosu büyütüldü, sidebar Pay logosu ortalandı (17.09.2026)
+
+- **Topbar:** `public/vodafone-logo.svg` resmi vektör dosyasıydı ama viewBox'ının yarısından fazlası boştu — 30px'e büyütülse bile görünen işaret ~12px kalıyordu. İnternetten yeni logo indirmek yerine aynı resmi dosyanın viewBox'ı gerçek çizim sınırlarına kırpıldı (`-0.4 13.28 80.6 20.5`); `.admin-topbar-home__logo` yüksekliği 30px. Sonuç: yatay, dikdörtgen logo, 118×30px. Dosyayı yalnızca `AdminIcon.tsx` kullanıyor.
+- **Sidebar:** `.sidebar-logo` → `justify-content: center` (Pay logosu sola dayalıydı). Ölçüm: logonun merkezi x=137, 275px'lik nav'ın merkezi 137,5.
+- Doğrulama: `next dev --port 3099` + headless Chrome (1440×900, sidebar açık ve kapalı) ekran görüntüleri kullanıcıya gönderildi. DB değişikliği yok.
