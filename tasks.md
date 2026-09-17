@@ -2213,3 +2213,12 @@ menüsünden 3 ürün düşer.
   - Admin'de kampanya düzenleme ekranında iki yeni alan, anasayfa sayfasında bloğun "Görünüm: Kaydırmalı şerit" seçimi görüldü (dev sunucu yeniden başlatıldıktan sonra; #54'teki config önbelleği durumu burada da vardı).
   - Testler 580/580; tsc'deki 21 hata eskiden beri var, sayı değişmedi.
 - ⚠️ **Deploy öncesi:** sıra aynı. Önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql` (3. bölümdeki `is_homepage` 8c'den önce geliyor, script içindeki sıra doğru). Clover ile site birlikte deploy edilmeli.
+
+## 56. Blog: opsiyonel tarih etiketi ve "Daha fazlasını keşfedin" yazı seçimi (17.09.2026)
+
+- `BlogPosts.publishedDate`: etiket "Yayın Tarihi (opsiyonel)" oldu ve açıklama eklendi. Doluysa sitede canlıdaki kırmızı tarih etiketi olarak görünüyor, boşsa etiket oluşmuyor. Kolon zaten vardı, şema değişikliği yok.
+- `BlogPosts.relatedPosts` (yeni, opsiyonel, hasMany, en fazla 3, kendisi seçilemez): yazının altındaki "Daha fazlasını keşfedin" kartları. Boşsa site aynı kategoriden, yetmezse en yeni yazılardan otomatik seçiyor. Site tarafı: vodafonepaycomtr-site tasks.md #56-site.
+- **DB migration:** `scripts/clover-schema-migration-02-09-to-17-09-2026.sql` dosyasına 9. bölüm eklendi: YENİ tablolar `blog_posts_rels` ve `_blog_posts_v_rels` (sequence, PK, 4 index, 2 FK; tekrar çalıştırılabilir DO bloğu). Doğrulama: tüm zincir boş DB'ye yüklendi, `pg_dump --schema-only` dev DB ile satırı satırına aynı (11.701 satır).
+- Admin'de doğrulandı: blog düzenleme ekranında "Yayın Tarihi (opsiyonel)" ve "Daha Fazlasını Keşfedin — Yazılar (opsiyonel)" alanları açıklamalarıyla görünüyor (dev sunucu yeniden başlatıldıktan sonra).
+- Testler 580/580; tsc'deki 21 hata eskiden beri var, sayı değişmedi.
+- ⚠️ **Deploy öncesi:** sıra aynı. Önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql` (9. bölüm dahil). Clover ile site birlikte deploy edilmeli.

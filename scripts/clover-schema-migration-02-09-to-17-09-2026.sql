@@ -34,6 +34,8 @@
 --   8. Kampanyalar (17.09) → campaigns.assignment_period / participation
 --      (+ _campaigns_v); Kampanya Grid bloğuna `layout` (grid|carousel) +
 --      anasayfadaki bloğun carousel'e alınması (VERİ)
+--   9. Blog (17.09) → "Daha fazlasını keşfedin" için blog_posts_rels ve
+--      _blog_posts_v_rels (YENİ tablolar)
 --
 -- NASIL DOĞRULANDI (elle türetilmedi): yerel geliştirme DB'sine Payload'ın
 -- kendi push-tabanlı şema senkronu uygulandı; ardından
@@ -333,5 +335,64 @@ UPDATE public._pages_v_blocks_campaign_grid vb
 SET    layout = 'carousel'
 FROM   public._pages_v v, public.pages p
 WHERE  vb._parent_id = v.id AND v.parent_id = p.id AND p.is_homepage IS TRUE;
+
+
+-- -----------------------------------------------------------------------------
+-- 9. Blog: "Daha fazlasını keşfedin" yazı seçimi (17.09.2026)
+--
+-- BlogPosts'a opsiyonel `relatedPosts` (hasMany ilişki, en fazla 3) eklendi —
+-- Payload hasMany ilişkileri `<tablo>_rels` tablosunda tutuyor. BlogPosts'un
+-- başka hasMany ilişkisi olmadığı için bu tablolar YENİ. Boş kalırsa site
+-- otomatik seçim yapıyor; mevcut hiçbir kayıt etkilenmez.
+-- Tablolar CREATE TABLE IF NOT EXISTS; index/FK'lar yalnızca tablo bu
+-- çalıştırmada oluşturulduysa eklenir (DO bloğu) — bölüm tek başına tekrar
+-- çalıştırılabilir.
+-- -----------------------------------------------------------------------------
+DO $$
+BEGIN
+    IF to_regclass('public.blog_posts_rels') IS NULL THEN
+        CREATE TABLE public.blog_posts_rels (
+            id integer NOT NULL,
+            "order" integer,
+            parent_id integer NOT NULL,
+            path character varying NOT NULL,
+            blog_posts_id integer
+        );
+        CREATE SEQUENCE public.blog_posts_rels_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+        ALTER SEQUENCE public.blog_posts_rels_id_seq OWNED BY public.blog_posts_rels.id;
+        ALTER TABLE ONLY public.blog_posts_rels ALTER COLUMN id SET DEFAULT nextval('public.blog_posts_rels_id_seq'::regclass);
+        ALTER TABLE ONLY public.blog_posts_rels ADD CONSTRAINT blog_posts_rels_pkey PRIMARY KEY (id);
+        CREATE INDEX blog_posts_rels_blog_posts_id_idx ON public.blog_posts_rels USING btree (blog_posts_id);
+        CREATE INDEX blog_posts_rels_order_idx ON public.blog_posts_rels USING btree ("order");
+        CREATE INDEX blog_posts_rels_parent_idx ON public.blog_posts_rels USING btree (parent_id);
+        CREATE INDEX blog_posts_rels_path_idx ON public.blog_posts_rels USING btree (path);
+        ALTER TABLE ONLY public.blog_posts_rels
+            ADD CONSTRAINT blog_posts_rels_blog_posts_fk FOREIGN KEY (blog_posts_id) REFERENCES public.blog_posts(id) ON DELETE CASCADE;
+        ALTER TABLE ONLY public.blog_posts_rels
+            ADD CONSTRAINT blog_posts_rels_parent_fk FOREIGN KEY (parent_id) REFERENCES public.blog_posts(id) ON DELETE CASCADE;
+    END IF;
+
+    IF to_regclass('public._blog_posts_v_rels') IS NULL THEN
+        CREATE TABLE public._blog_posts_v_rels (
+            id integer NOT NULL,
+            "order" integer,
+            parent_id integer NOT NULL,
+            path character varying NOT NULL,
+            blog_posts_id integer
+        );
+        CREATE SEQUENCE public._blog_posts_v_rels_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+        ALTER SEQUENCE public._blog_posts_v_rels_id_seq OWNED BY public._blog_posts_v_rels.id;
+        ALTER TABLE ONLY public._blog_posts_v_rels ALTER COLUMN id SET DEFAULT nextval('public._blog_posts_v_rels_id_seq'::regclass);
+        ALTER TABLE ONLY public._blog_posts_v_rels ADD CONSTRAINT _blog_posts_v_rels_pkey PRIMARY KEY (id);
+        CREATE INDEX _blog_posts_v_rels_blog_posts_id_idx ON public._blog_posts_v_rels USING btree (blog_posts_id);
+        CREATE INDEX _blog_posts_v_rels_order_idx ON public._blog_posts_v_rels USING btree ("order");
+        CREATE INDEX _blog_posts_v_rels_parent_idx ON public._blog_posts_v_rels USING btree (parent_id);
+        CREATE INDEX _blog_posts_v_rels_path_idx ON public._blog_posts_v_rels USING btree (path);
+        ALTER TABLE ONLY public._blog_posts_v_rels
+            ADD CONSTRAINT _blog_posts_v_rels_blog_posts_fk FOREIGN KEY (blog_posts_id) REFERENCES public.blog_posts(id) ON DELETE CASCADE;
+        ALTER TABLE ONLY public._blog_posts_v_rels
+            ADD CONSTRAINT _blog_posts_v_rels_parent_fk FOREIGN KEY (parent_id) REFERENCES public._blog_posts_v(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 COMMIT;

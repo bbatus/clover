@@ -161,7 +161,38 @@ export const BlogPosts: CollectionConfig = {
         },
       },
     },
-    { name: "publishedDate", type: "date", label: { tr: "Yayın Tarihi", en: "Published Date" }, admin: { date: { pickerAppearance: "dayOnly" } } },
+    {
+      name: "publishedDate",
+      type: "date",
+      label: { tr: "Yayın Tarihi (opsiyonel)", en: "Published Date (optional)" },
+      admin: {
+        date: { pickerAppearance: "dayOnly" },
+        description: {
+          tr: "Doldurulursa yazının detay sayfasında, başlığın altında canlı sitedeki kırmızı tarih etiketi (örn. 23.07.2026) olarak görünür; blog listesi de bu tarihe göre sıralanır. Boş bırakılırsa etiket hiç oluşmaz.",
+          en: "If set, shown on the post page as the live site's red date badge under the title (e.g. 23.07.2026); the blog list is also sorted by it. Left empty, no badge is shown.",
+        },
+      },
+    },
+    {
+      // 17.09.2026 kullanıcı: canlı blog detayının en altında "Daha
+      // fazlasını keşfedin" başlığıyla 3 başka yazı kartı var. Editör isterse
+      // hangi yazıların çıkacağını buradan seçer; boş bırakılırsa site aynı
+      // kategoriden, sonra en yeni yazılardan otomatik 3 tane seçer. Bölüm,
+      // gösterilecek başka yazı yoksa hiç oluşmaz.
+      name: "relatedPosts",
+      type: "relationship",
+      relationTo: "blog-posts",
+      hasMany: true,
+      maxRows: 3,
+      label: { tr: "Daha Fazlasını Keşfedin — Yazılar (opsiyonel)", en: "Discover More — Posts (optional)" },
+      filterOptions: ({ id }) => (id ? { id: { not_equals: id } } : true),
+      admin: {
+        description: {
+          tr: "Yazının en altındaki 'Daha fazlasını keşfedin' bölümünde gösterilecek en fazla 3 yazı. Boş bırakırsanız aynı kategoriden (yetmezse en yeni) yazılar otomatik gösterilir.",
+          en: "Up to 3 posts for the 'Daha fazlasını keşfedin' section at the bottom of the post. Left empty, posts from the same category (then the newest) are shown automatically.",
+        },
+      },
+    },
     {
       // Named postStatus (not "status") — see the same collision noted on
       // Campaigns.campaignStatus.
