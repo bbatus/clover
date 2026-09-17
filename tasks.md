@@ -2162,3 +2162,9 @@ menüsünden 3 ürün düşer.
 - **Topbar:** `public/vodafone-logo.svg` resmi vektör dosyasıydı ama viewBox'ının yarısından fazlası boştu — 30px'e büyütülse bile görünen işaret ~12px kalıyordu. İnternetten yeni logo indirmek yerine aynı resmi dosyanın viewBox'ı gerçek çizim sınırlarına kırpıldı (`-0.4 13.28 80.6 20.5`); `.admin-topbar-home__logo` yüksekliği 30px. Sonuç: yatay, dikdörtgen logo, 118×30px. Dosyayı yalnızca `AdminIcon.tsx` kullanıyor.
 - **Sidebar:** `.sidebar-logo` → `justify-content: center` (Pay logosu sola dayalıydı). Ölçüm: logonun merkezi x=137, 275px'lik nav'ın merkezi 137,5.
 - Doğrulama: `next dev --port 3099` + headless Chrome (1440×900, sidebar açık ve kapalı) ekran görüntüleri kullanıcıya gönderildi. DB değişikliği yok.
+
+## 51. Sidebar: Pay logosu büyütüldü + menü ikonları (17.09.2026)
+
+- `.sidebar-logo__img` 48 → 64px (sidebar'ın altında boşluk vardı).
+- Her nav öğesine tek renkli çizgi ikon eklendi — sadece CSS (`custom.css` sonundaki "Sidebar nav ikonları" bölümü): `::before` + `mask` ile. Pasifken gri (`--theme-elevation-400`), hover'da ve aktif sayfada koyu gri. Şekiller Lucide'den alındı (ISC lisanslı, sitenin kendi ikon seti), stroke 1.75, SVG'ler data URI olarak gömülü. Eşleşme koleksiyon/global'lerde `#nav-<slug>` id'siyle (aktif sayfadaki öğe href taşımayan bir `<div>` oluyor), özel view'larda href'le yapılıyor. İkon tanımı olmayan yeni bir öğe ikonsuz ama hizası bozulmadan görünür. Bileşen ya da importMap değişikliği yok.
+- Doğrulama: `next dev` 3099 + headless Chrome 1440×900; 20 öğenin 20'sinde de ikon var, aktif "Sayfalar" koyu ikonla görünüyor. DB değişikliği yok.
