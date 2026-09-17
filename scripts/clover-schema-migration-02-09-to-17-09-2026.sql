@@ -31,6 +31,9 @@
 --      limit_tables.footnote (+ _limit_tables_v.version_footnote)
 --   7. SSS cevabı düz metin → zengin metin (17.09) → faq_items.answer ve
 --      _faq_items_v.version_answer varchar → jsonb (VERİ DÖNÜŞÜMÜYLE)
+--   8. Kampanyalar (17.09) → campaigns.assignment_period / participation
+--      (+ _campaigns_v); Kampanya Grid bloğuna `layout` (grid|carousel) +
+--      anasayfadaki bloğun carousel'e alınması (VERİ)
 --
 -- NASIL DOĞRULANDI (elle türetilmedi): yerel geliştirme DB'sine Payload'ın
 -- kendi push-tabanlı şema senkronu uygulandı; ardından
@@ -284,5 +287,51 @@ ALTER TABLE public._faq_items_v
     ALTER COLUMN version_answer TYPE jsonb USING pg_temp.faq_text_to_lexical(version_answer);
 
 DROP FUNCTION pg_temp.faq_text_to_lexical(text);
+
+
+-- -----------------------------------------------------------------------------
+-- 8. Kampanyalar: detay sayfası bilgi kutuları + blok görünümü (17.09.2026)
+--
+-- a) Canlı kampanya detayındaki "Tanımlama Süresi" ve "Katılım" kutuları için
+--    iki opsiyonel metin kolonu. Boş (NULL) kalırsa sitede kutu oluşmaz.
+-- b) Kampanya Grid bloğuna görünüm seçimi: 'grid' (Kampanyalar sayfası kart
+--    ızgarası) | 'carousel' (anasayfadaki gri zeminli kaydırmalı şerit).
+--    Mevcut bloklar DEFAULT ile 'grid' olur — görünümleri değişmez.
+-- c) VERİ: anasayfa olarak işaretli sayfadaki (pages.is_homepage, 3. bölüm)
+--    kampanya bloğu canlıdaki gibi 'carousel' yapılır — yayındaki tablo ve
+--    o sayfanın TÜM sürümleri (admin düzenleme ekranı sürüm tablosundan
+--    okuyor, bkz. 1. bölüm notu).
+--
+-- a/b tekrar çalıştırılabilir (IF NOT EXISTS / duplicate_object atlanır);
+-- c idempotent (zaten 'carousel' olanı yeniden yazar).
+-- -----------------------------------------------------------------------------
+ALTER TABLE public.campaigns
+    ADD COLUMN IF NOT EXISTS assignment_period character varying,
+    ADD COLUMN IF NOT EXISTS participation character varying;
+ALTER TABLE public._campaigns_v
+    ADD COLUMN IF NOT EXISTS version_assignment_period character varying,
+    ADD COLUMN IF NOT EXISTS version_participation character varying;
+
+DO $$ BEGIN
+    CREATE TYPE public.enum_pages_blocks_campaign_grid_layout AS ENUM ('grid', 'carousel');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+    CREATE TYPE public.enum__pages_v_blocks_campaign_grid_layout AS ENUM ('grid', 'carousel');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+ALTER TABLE public.pages_blocks_campaign_grid
+    ADD COLUMN IF NOT EXISTS layout public.enum_pages_blocks_campaign_grid_layout DEFAULT 'grid'::public.enum_pages_blocks_campaign_grid_layout;
+ALTER TABLE public._pages_v_blocks_campaign_grid
+    ADD COLUMN IF NOT EXISTS layout public.enum__pages_v_blocks_campaign_grid_layout DEFAULT 'grid'::public.enum__pages_v_blocks_campaign_grid_layout;
+
+UPDATE public.pages_blocks_campaign_grid b
+SET    layout = 'carousel'
+FROM   public.pages p
+WHERE  b._parent_id = p.id AND p.is_homepage IS TRUE;
+
+UPDATE public._pages_v_blocks_campaign_grid vb
+SET    layout = 'carousel'
+FROM   public._pages_v v, public.pages p
+WHERE  vb._parent_id = v.id AND v.parent_id = p.id AND p.is_homepage IS TRUE;
 
 COMMIT;

@@ -538,6 +538,38 @@ export const Campaigns: CollectionConfig = {
       ],
     },
     {
+      // 17.09.2026 kullanıcı: canlı vodafonepay.com.tr kampanya detayında
+      // "Kampanya Tarihi" yanında "Tanımlama Süresi" (örn. 24 Saat) ve
+      // "Katılım" (örn. 1) kutuları da var. İkisi de tarih gibi opsiyonel:
+      // boş bırakılırsa sitede o kutu hiç oluşmaz, doldurulursa canlıdaki
+      // ikon + başlık + değer düzeniyle aynı şekilde oluşur.
+      type: "row",
+      fields: [
+        {
+          name: "assignmentPeriod",
+          type: "text",
+          label: { tr: "Tanımlama Süresi (opsiyonel)", en: "Reward Crediting Time (optional)" },
+          admin: {
+            description: {
+              tr: "Detay sayfasında 'Tanımlama Süresi' kutusunda görünür, örn. '24 Saat'. Boş bırakılırsa kutu gösterilmez.",
+              en: "Shown in the 'Tanımlama Süresi' box on the detail page, e.g. '24 Saat'. Left empty, the box is not shown.",
+            },
+          },
+        },
+        {
+          name: "participation",
+          type: "text",
+          label: { tr: "Katılım (opsiyonel)", en: "Participation (optional)" },
+          admin: {
+            description: {
+              tr: "Detay sayfasında 'Katılım' kutusunda görünür, örn. '1' ya da 'Kişi başı 1 kez'. Boş bırakılırsa kutu gösterilmez.",
+              en: "Shown in the 'Katılım' box on the detail page, e.g. '1'. Left empty, the box is not shown.",
+            },
+          },
+        },
+      ],
+    },
+    {
       // RFP follow-up: footer'daki "Kampanyalar" sütunu artık sabit
       // kod/NavLinks değil, buradan yönetiliyor — işaretlenen kampanyalar
       // (en fazla FOOTER_ORDER_MAX tanesi) footer'da gösteriliyor.

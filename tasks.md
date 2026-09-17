@@ -2197,3 +2197,19 @@ menüsünden 3 ürün düşer.
   - Admin'de SSS düzenleme ekranı zengin metin editörüyle ve taşınmış metinle açılıyor. Yeniden başlatmadan önce alan görünmüyordu; sebep dev sunucunun eski config'i tutmasıydı, kod hatası değil.
   - Testler 580/580.
 - ⚠️ **Deploy öncesi:** 7. bölüm tekrar çalıştırılamaz (kolon zaten jsonb ise hata verip geri döner, zararsız). Script sırası aynı: önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql`. **Clover ile site birlikte deploy edilmeli:** yeni site eski CMS'in string cevabını da okuyor, ama eski site yeni CMS'in zengin metin cevabını okuyamaz (zod şeması string bekliyordu).
+
+## 55. Kampanyalar: detay bilgi kutuları + Kampanya Grid bloğuna görünüm seçimi (17.09.2026)
+
+- `Campaigns`: `assignmentPeriod` ("Tanımlama Süresi", örn. "24 Saat") ve `participation` ("Katılım", örn. "1"). Tarih satırının hemen altında, ikisi de opsiyonel: boşsa sitede o kutu hiç oluşmuyor, doluysa canlıdaki ikon + başlık + değer düzeniyle oluşuyor (Kampanya Tarihi zaten start/endDate'ten geliyordu).
+- Pages `campaignGrid` bloğu: `layout` = `grid` ("Kart ızgarası (Kampanyalar sayfasındaki gibi)") | `carousel` ("Kaydırmalı şerit (Anasayfadaki gibi)"), varsayılan `grid`. Canlıdaki iki kampanya görünümünü de aynı blok üretebiliyor. Site tarafı: vodafonepaycomtr-site tasks.md #55-site.
+- **DB migration:** `scripts/clover-schema-migration-02-09-to-17-09-2026.sql` dosyasına 8. bölüm eklendi:
+  - `campaigns.assignment_period/participation` ve `_campaigns_v` karşılıkları;
+  - 2 yeni enum;
+  - `pages_blocks_campaign_grid.layout` ve `_pages_v_blocks_campaign_grid.layout`;
+  - VERİ: anasayfa olarak işaretli sayfanın (`is_homepage`, 3. bölüm) kampanya bloğu `carousel` yapılıyor, yayındaki satır ve tüm sürümleri.
+- Doğrulama:
+  - Dev DB'de 8. bölüm uygulandı (1 blok + 13 sürüm satırı).
+  - Tüm zincir boş DB'ye yüklendi, `pg_dump --schema-only` dev DB ile satırı satırına aynı (11.509 satır).
+  - Admin'de kampanya düzenleme ekranında iki yeni alan, anasayfa sayfasında bloğun "Görünüm: Kaydırmalı şerit" seçimi görüldü (dev sunucu yeniden başlatıldıktan sonra; #54'teki config önbelleği durumu burada da vardı).
+  - Testler 580/580; tsc'deki 21 hata eskiden beri var, sayı değişmedi.
+- ⚠️ **Deploy öncesi:** sıra aynı. Önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql` (3. bölümdeki `is_homepage` 8c'den önce geliyor, script içindeki sıra doğru). Clover ile site birlikte deploy edilmeli.

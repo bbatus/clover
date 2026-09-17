@@ -266,6 +266,27 @@ const CampaignGridBlock: Block = {
   },
   fields: [
     {
+      // 17.09.2026: canlı sitede kampanyalar iki farklı görünümle çıkıyor —
+      // /kampanyalar'daki 3 sütunlu kart ızgarası (widget_Campaigns) ve
+      // anasayfadaki gri zeminli, oklu/noktalı kaydırmalı şerit
+      // (widget_Homepage_VpayKampanya, üstünde "Kampanyalar · İncele >").
+      // Aynı blok ikisini de üretebilsin diye görünüm seçimi eklendi.
+      name: "layout",
+      type: "select",
+      defaultValue: "grid",
+      label: { tr: "Görünüm", en: "Layout" },
+      options: [
+        { label: { tr: "Kart ızgarası (Kampanyalar sayfasındaki gibi)", en: "Card grid (as on the Campaigns page)" }, value: "grid" },
+        { label: { tr: "Kaydırmalı şerit (Anasayfadaki gibi)", en: "Carousel (as on the homepage)" }, value: "carousel" },
+      ],
+      admin: {
+        description: {
+          tr: "Kart ızgarası: görsel, başlık ve 'Detayları gör' linkli kartlar, 3 sütun. Kaydırmalı şerit: gri zeminde tek tek kayan kampanyalar, başlığın yanında Kampanyalar sayfasına giden 'İncele' linki.",
+          en: "Card grid: cards with image, title and a 'Detayları gör' link, 3 columns. Carousel: campaigns sliding one at a time on a grey band, with an 'İncele' link to the Campaigns page next to the heading.",
+        },
+      },
+    },
+    {
       name: "heading",
       label: { tr: "Başlık", en: "Heading" },
       type: "text",
