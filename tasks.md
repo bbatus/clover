@@ -2168,3 +2168,14 @@ menüsünden 3 ürün düşer.
 - `.sidebar-logo__img` 48 → 64px (sidebar'ın altında boşluk vardı).
 - Her nav öğesine tek renkli çizgi ikon eklendi — sadece CSS (`custom.css` sonundaki "Sidebar nav ikonları" bölümü): `::before` + `mask` ile. Pasifken gri (`--theme-elevation-400`), hover'da ve aktif sayfada koyu gri. Şekiller Lucide'den alındı (ISC lisanslı, sitenin kendi ikon seti), stroke 1.75, SVG'ler data URI olarak gömülü. Eşleşme koleksiyon/global'lerde `#nav-<slug>` id'siyle (aktif sayfadaki öğe href taşımayan bir `<div>` oluyor), özel view'larda href'le yapılıyor. İkon tanımı olmayan yeni bir öğe ikonsuz ama hizası bozulmadan görünür. Bileşen ya da importMap değişikliği yok.
 - Doğrulama: `next dev` 3099 + headless Chrome 1440×900; 20 öğenin 20'sinde de ikon var, aktif "Sayfalar" koyu ikonla görünüyor. DB değişikliği yok.
+
+## 52. Ücretler & Limitler: canlı sayfayı birebir üretebilmek için yeni alanlar (17.09.2026)
+
+- `FeeRows`: `rowType` (ücret satırı / ara başlık / tablo altı not), `value` çok satırlı hale geldi (textarea), `highlightValue` (yeşil "Ücretsiz"), `note` (richText, link destekli). Koşullu zorunluluklar: `requiredUnlessNote`, `requiredForFeeRow`, `requiredForNote` (testler: `feeRows.test.ts`).
+- `LimitTables`: `footnote` (tablo altı dipnot).
+- `FeesAndLimitsApp`: not ve ara başlık satırları listede türüyle görünüyor (not satırında etiket yok; aksi halde tıklanamayan boş bir hücre olurdu).
+- Admin'den oluşturuldu (yerel dev DB): ücret #20 "Faturana Yansıt Geç Tahsilat Bedeli" (çok satırlı, çekmece UI'ından), #21 "Vodafone Pay Kart Yenileme Ücreti" (yeşil), #22 not satırı (canlıdaki linkli metin); limit tablosu #11 "Vodafone Pay Hesap Limitleri", #12 "Vodafone Pay ile Faturana Yansıt Limitleri" (dipnotlu). Hepsi yayında. #21, #22, #11 ve #12 aynı admin oturumuyla CMS API'sinden oluşturuldu.
+- Site tarafı: vodafonepaycomtr-site tasks.md #52-site.
+- **DB migration:** `scripts/clover-schema-migration-02-09-to-17-09-2026.sql` dosyasına 6. bölüm eklendi. İçerik: 2 yeni enum, `fee_rows.row_type/highlight_value/note` ve bunların `_fee_rows_v` karşılıkları, `limit_tables.footnote` ve `_limit_tables_v.version_footnote`. Doğrulama: baseline + iki script boş DB'ye yüklendi, tüm şemanın `pg_dump --schema-only` çıktısı dev DB ile satırı satırına aynı (11.479 satır).
+- ⚠️ **Deploy öncesi çalıştırılmalı:** önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql` (6. bölüm dahil). Çalıştırılmazsa ücret/limit API'si yeni kolonları bulamaz ve sayfa hata verir.
+- tsc: 21 hata, hepsi eskiden beri var (yeniden üretilen payload-types kaynaklı, sayı değişmedi); eslint temiz; testler 580/580.

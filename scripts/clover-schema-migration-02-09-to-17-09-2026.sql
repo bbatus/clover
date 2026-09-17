@@ -26,11 +26,15 @@
 --   5. Önceden var olan şema kaymasının düzeltilmesi (17.09'da bulundu —
 --      içinde prod'u etkileyen gerçek bir taslak-kaydetme hatası var)
 --
+--   6. Ücretler & Limitler (17.09) → YENİ kolonlar + 2 YENİ enum tipi
+--      fee_rows.row_type / highlight_value / note (+ _fee_rows_v karşılıkları)
+--      limit_tables.footnote (+ _limit_tables_v.version_footnote)
+--
 -- NASIL DOĞRULANDI (elle türetilmedi): yerel geliştirme DB'sine Payload'ın
 -- kendi push-tabanlı şema senkronu uygulandı; ardından
 -- clover-test-db-schema.sql → ...01-09-to-02-09-2026.sql → bu script boş bir
 -- scratch DB'ye sırayla yüklenip TÜM ŞEMANIN `pg_dump --schema-only` çıktısı
--- dev DB'ninkiyle karşılaştırıldı — birebir aynı (10.933 satır). 4. bölümün
+-- dev DB'ninkiyle karşılaştırıldı — birebir aynı (10.933 satır; 6. bölüm eklendikten sonra 17.09'da tekrar: 11.479 satır, yine birebir). 4. bölümün
 -- veri güncellemesi ayrıca gerçek verinin bir kopyasında çalıştırılıp
 -- sonuçları kontrol edildi.
 --
@@ -197,5 +201,36 @@ ALTER TABLE public.pages_blocks_video_list
 ALTER TABLE public._pages_v_blocks_video_list
     RENAME CONSTRAINT _pages_v_blocks_video_list_dark_bg_image_id_media_fk
     TO _pages_v_blocks_video_list_dark_background_image_id_media_id_fk;
+
+-- -----------------------------------------------------------------------------
+-- 6. Ücretler & Limitler: satır türü, yeşil değer, tablo altı not (17.09.2026)
+--
+-- Canlıdaki /ucretler-ve-limitler sayfasını birebir üretebilmek için: ücret
+-- tablosuna ara başlık satırı, yeşil ("Ücretsiz") değer, çok satırlı değer ve
+-- tablonun altında linkli not; limit tablolarına tablo altı dipnot.
+-- Mevcut satırlar DEFAULT sayesinde otomatik olarak 'fee' (düz ücret satırı)
+-- olur — görünümleri değişmez. `value` text → textarea: Postgres'te ikisi de
+-- varchar, kolon değişmedi. Enum'lar DO-blok içinde oluşturuluyor (varsa
+-- atlanır); kolonlar ADD COLUMN IF NOT EXISTS — bu bölüm tek başına
+-- tekrar çalıştırılabilir.
+-- -----------------------------------------------------------------------------
+DO $$ BEGIN
+    CREATE TYPE public.enum_fee_rows_row_type AS ENUM ('fee', 'heading', 'note');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+    CREATE TYPE public.enum__fee_rows_v_version_row_type AS ENUM ('fee', 'heading', 'note');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+ALTER TABLE public.fee_rows
+    ADD COLUMN IF NOT EXISTS row_type public.enum_fee_rows_row_type DEFAULT 'fee'::public.enum_fee_rows_row_type,
+    ADD COLUMN IF NOT EXISTS highlight_value boolean DEFAULT false,
+    ADD COLUMN IF NOT EXISTS note jsonb;
+ALTER TABLE public._fee_rows_v
+    ADD COLUMN IF NOT EXISTS version_row_type public.enum__fee_rows_v_version_row_type DEFAULT 'fee'::public.enum__fee_rows_v_version_row_type,
+    ADD COLUMN IF NOT EXISTS version_highlight_value boolean DEFAULT false,
+    ADD COLUMN IF NOT EXISTS version_note jsonb;
+
+ALTER TABLE public.limit_tables    ADD COLUMN IF NOT EXISTS footnote character varying;
+ALTER TABLE public._limit_tables_v ADD COLUMN IF NOT EXISTS version_footnote character varying;
 
 COMMIT;

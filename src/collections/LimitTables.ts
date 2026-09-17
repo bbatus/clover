@@ -64,6 +64,19 @@ export const LimitTables: CollectionConfig = {
       ],
     },
     {
+      // 17.09.2026: canlıdaki "*Faturana Yansıt limitleriniz her ayın
+      // 1'inde yenilenir." notu — tablonun hemen altında düz metin.
+      name: "footnote",
+      type: "textarea",
+      label: { tr: "Tablo Altı Not", en: "Footnote" },
+      admin: {
+        description: {
+          tr: "Opsiyonel. Bu tablonun hemen altında küçük düz metin olarak görünür, örn. '*Faturana Yansıt limitleriniz her ayın 1'inde yenilenir.'",
+          en: "Optional. Shown as plain text right below this table.",
+        },
+      },
+    },
+    {
       name: "createdBy",
       type: "relationship",
       relationTo: "users",

@@ -11,7 +11,20 @@ import { ROLES } from "@/access/roleConstants";
 /** Mirrors ReorderWidget's own `canReorder` — kept next to it so the two cannot drift apart silently again. */
 const REORDER_ROLES = new Set<string>([ROLES.NEW_VERTICAL_MAKER, ROLES.NEW_VERTICAL_CHECKER, ROLES.GROWTH_CHECKER]);
 
-type FeeRow = { id: string | number; label: string; value: string; order: number; _status?: string };
+type FeeRow = {
+  id: string | number;
+  label?: string | null;
+  value?: string | null;
+  rowType?: "fee" | "heading" | "note" | null;
+  order: number;
+  _status?: string;
+};
+
+/** Heading and note rows (17.09.2026) have no value, and a note has no label either — without these the row would render as an empty, unclickable cell. */
+const ROW_TYPE_STRINGS = {
+  tr: { heading: "Ara başlık", note: "Tablo altı not" },
+  en: { heading: "Section heading", note: "Note below the table" },
+};
 type LimitTable = { id: string | number; title: string; order: number; _status?: string; rows?: { category: string }[] };
 
 type Tab = "fee-rows" | "limit-tables";
@@ -32,15 +45,18 @@ const TAB_LABELS: Record<Tab, { tr: string; en: string }> = {
  * `overrideEntityVisibility` to true and bypasses that check.
  */
 function FeeRowRow({ row, onSaved }: { row: FeeRow; onSaved: () => void }) {
-  const t = useDbStrings(useAdminLocale());
+  const locale = useAdminLocale();
+  const t = useDbStrings(locale);
+  const typeStrings = ROW_TYPE_STRINGS[locale] ?? ROW_TYPE_STRINGS.tr;
   const [DocDrawer, DocToggler] = useDocumentDrawer({ collectionSlug: "fee-rows", id: row.id });
+  const rowType = row.rowType ?? "fee";
   return (
     <tr>
       <td>
-        <DocToggler>{row.label}</DocToggler>
+        <DocToggler>{rowType === "note" ? typeStrings.note : row.label}</DocToggler>
         <DocDrawer onSave={onSaved} />
       </td>
-      <td>{row.value}</td>
+      <td>{rowType === "fee" ? row.value : <em>{typeStrings[rowType]}</em>}</td>
       <td>
         {row._status === "published" ? (
           <span className="cm-badge cm-badge--published">{t("contentManagement.published")}</span>
