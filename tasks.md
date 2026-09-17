@@ -2186,3 +2186,14 @@ menüsünden 3 ürün düşer.
 - Ölçüm (1440px, sidebar'ın sağ kenarından içeriğin başladığı yere kadar olan yatay boşluk): Payload'ın kendi ekranları (Sayfalar, Kullanıcılar, İletişim Bilgileri, doküman düzenleme) `<Gutter>` üzerinden `--gutter-h` = **60px**. Bizim özel view'larda: Anasayfa, Tüm İçerikler, Ücretler ve Limitler, Geri Bildirim ve Profil **26px** (`.cm` / `.cm-view-pad` → `padding: 2rem`); Erişim Matrisi ve Nasıl Kullanılır? **0px** (hiç sarmalayıcı yoktu).
 - Düzeltme: `.cm` ve `.cm-view-pad` yatay dolguyu `var(--gutter-h)`'den alıyor (dikey 2rem aynı kaldı), böylece mobilde de Payload ekranlarıyla birlikte küçülüyor. `AccessMatrixView` ile `GuideView` içeriği `.cm-view-pad` içine alındı.
 - Doğrulama: `next dev` 3099 + headless Chrome, sidebar açık ve kapalı. 9 ekranın hepsinde içerik sidebar kenarından 60px sonra başlıyor (açıkken x=335, nav sağ kenarı 275). Testler geçti. DB değişikliği yok.
+
+## 54. SSS cevabı zengin metin oldu (17.09.2026)
+
+- Neden: canlıdaki SSS cevaplarında kalın ara başlık, liste ve tablo var ("Anında Bakiye ile yapacağım işlemlerde bir limit var mıdır?" gibi); textarea bunları tutamıyordu, site de üretemiyordu. `FaqItems.answer` textarea yerine richText oldu (tablo dahil, editörün tüm özellikleri açık). Site tarafı: vodafonepaycomtr-site tasks.md #54-site.
+- **DB migration:** `scripts/clover-schema-migration-02-09-to-17-09-2026.sql` dosyasına 7. bölüm eklendi. `faq_items.answer` ve `_faq_items_v.version_answer` varchar → jsonb, mevcut her cevap Lexical JSON'a çevriliyor: boş satırla ayrılan bloklar paragraf, tek satır sonu linebreak olur. Dönüşüm fonksiyonu geçici (pg_temp) ve aynı transaction içinde siliniyor.
+- Doğrulama:
+  - Dönüşüm dev DB'de çalıştırıldı; 26 kayıt ve 78 sürümün düz metni öncesi/sonrası birebir aynı.
+  - Tüm zincir boş DB'ye yüklendi; `pg_dump --schema-only` çıktısı dev DB ile satırı satırına aynı (11.479 satır).
+  - Admin'de SSS düzenleme ekranı zengin metin editörüyle ve taşınmış metinle açılıyor. Yeniden başlatmadan önce alan görünmüyordu; sebep dev sunucunun eski config'i tutmasıydı, kod hatası değil.
+  - Testler 580/580.
+- ⚠️ **Deploy öncesi:** 7. bölüm tekrar çalıştırılamaz (kolon zaten jsonb ise hata verip geri döner, zararsız). Script sırası aynı: önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql`. **Clover ile site birlikte deploy edilmeli:** yeni site eski CMS'in string cevabını da okuyor, ama eski site yeni CMS'in zengin metin cevabını okuyamaz (zod şeması string bekliyordu).

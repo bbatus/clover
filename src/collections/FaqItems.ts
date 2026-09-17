@@ -63,7 +63,24 @@ export const FaqItems: CollectionConfig = {
   },
   fields: [
     { name: "question", type: "text", required: true, label: { tr: "Soru", en: "Question" } },
-    { name: "answer", type: "textarea", required: true, label: { tr: "Cevap", en: "Answer" } },
+    {
+      // 17.09.2026: was a plain textarea. The live vodafonepay.com.tr answers
+      // carry bold sub-headings, lists and tables (e.g. "Anında Bakiye ile
+      // yapacağım işlemlerde bir limit var mıdır?"), none of which a textarea
+      // can hold — so the site could not reproduce them. Existing answers were
+      // converted paragraph-for-paragraph by
+      // scripts/clover-schema-migration-02-09-to-17-09-2026.sql §7.
+      name: "answer",
+      type: "richText",
+      required: true,
+      label: { tr: "Cevap", en: "Answer" },
+      admin: {
+        description: {
+          tr: "Sitede soru açıldığında görünen metin. Kalın yazı, liste, tablo ve link ekleyebilirsiniz.",
+          en: "Text shown on the site when the question is opened. Bold text, lists, tables and links are supported.",
+        },
+      },
+    },
     {
       // RFP §3.1.7: "Each content item should have a deeplink field in
       // order to enable redirection." An FAQ answer is often "see the full

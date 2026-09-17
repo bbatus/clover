@@ -29,6 +29,8 @@
 --   6. Ücretler & Limitler (17.09) → YENİ kolonlar + 2 YENİ enum tipi
 --      fee_rows.row_type / highlight_value / note (+ _fee_rows_v karşılıkları)
 --      limit_tables.footnote (+ _limit_tables_v.version_footnote)
+--   7. SSS cevabı düz metin → zengin metin (17.09) → faq_items.answer ve
+--      _faq_items_v.version_answer varchar → jsonb (VERİ DÖNÜŞÜMÜYLE)
 --
 -- NASIL DOĞRULANDI (elle türetilmedi): yerel geliştirme DB'sine Payload'ın
 -- kendi push-tabanlı şema senkronu uygulandı; ardından
@@ -232,5 +234,55 @@ ALTER TABLE public._fee_rows_v
 
 ALTER TABLE public.limit_tables    ADD COLUMN IF NOT EXISTS footnote character varying;
 ALTER TABLE public._limit_tables_v ADD COLUMN IF NOT EXISTS version_footnote character varying;
+
+-- -----------------------------------------------------------------------------
+-- 7. SSS cevabı: düz metin (textarea) → zengin metin (richText) (17.09.2026)
+--
+-- Canlıdaki SSS cevaplarında kalın ara başlık, liste ve tablo var; düz metin
+-- alanı bunları ifade edemiyordu. Payload richText'i jsonb (Lexical JSON)
+-- olarak saklıyor. Kolon tipi değişirken HER mevcut cevap kayıpsız
+-- dönüştürülüyor: boş satırla ayrılmış bloklar ayrı paragraf, tek satır
+-- sonları paragraf içinde satır sonu (linebreak) olur. NULL/boş cevap NULL
+-- kalır. Yardımcı fonksiyon aynı transaction içinde oluşturulup silinir.
+--
+-- TEKRAR ÇALIŞTIRILAMAZ (kolon zaten jsonb ise ALTER ... USING hata verir ve
+-- transaction geri döner — zararsız, "zaten uygulanmış" demektir).
+-- Doğrulama: dönüşüm öncesi ve sonrası her satırın düz metni (satır sonları
+-- dahil) karşılaştırıldı — 26 kayıt + 78 sürüm, fark yok.
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION pg_temp.faq_text_to_lexical(t text) RETURNS jsonb
+LANGUAGE sql IMMUTABLE AS $fn$
+    SELECT CASE WHEN t IS NULL OR btrim(t) = '' THEN NULL ELSE jsonb_build_object('root', jsonb_build_object(
+        'type', 'root', 'format', '', 'indent', 0, 'version', 1, 'direction', 'ltr',
+        'children', (
+            SELECT jsonb_agg(jsonb_build_object(
+                'type', 'paragraph', 'format', '', 'indent', 0, 'version', 1, 'direction', 'ltr',
+                'textFormat', 0, 'textStyle', '',
+                'children', (
+                    SELECT jsonb_agg(node ORDER BY ord)
+                    FROM (
+                        SELECT (l.n * 2) AS ord, jsonb_build_object('type', 'text', 'text', l.line, 'mode', 'normal',
+                               'style', '', 'detail', 0, 'format', 0, 'version', 1) AS node
+                        FROM unnest(string_to_array(p.para, E'\n')) WITH ORDINALITY AS l(line, n)
+                        WHERE l.line <> ''
+                        UNION ALL
+                        SELECT (l.n * 2 + 1), jsonb_build_object('type', 'linebreak', 'version', 1)
+                        FROM unnest(string_to_array(p.para, E'\n')) WITH ORDINALITY AS l(line, n)
+                        WHERE l.n < array_length(string_to_array(p.para, E'\n'), 1)
+                    ) nodes
+                )
+            ) ORDER BY p.pn)
+            FROM unnest(regexp_split_to_array(btrim(replace(t, E'\r', ''), E'\n'), E'\n[ \t]*\n+')) WITH ORDINALITY AS p(para, pn)
+            WHERE btrim(p.para) <> ''
+        )
+    )) END
+$fn$;
+
+ALTER TABLE public.faq_items
+    ALTER COLUMN answer TYPE jsonb USING pg_temp.faq_text_to_lexical(answer);
+ALTER TABLE public._faq_items_v
+    ALTER COLUMN version_answer TYPE jsonb USING pg_temp.faq_text_to_lexical(version_answer);
+
+DROP FUNCTION pg_temp.faq_text_to_lexical(text);
 
 COMMIT;
