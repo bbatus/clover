@@ -1491,6 +1491,43 @@ export const preventSelfParent: CollectionBeforeValidateHook = ({ data, original
  * `generateStaticParams`/sitemap.ts — no site-side gating code needed, the
  * access function is the only thing that has to know about `visibility`.
  */
+/**
+ * 16.09.2026: aynı anda yalnızca BİR sayfa `isHomepage` olabilir. İki tane
+ * olsaydı `/` hangisini basacağını sıralamaya bırakırdı — editörün
+ * göremeyeceği, bir kayıt güncellendiğinde sessizce değişebilecek bir seçim.
+ * İkinci işaretlemeyi reddetmek, eskisini sessizce kaldırmaktan daha dürüst:
+ * editör neyin anasayfa olduğunu açıkça kendisi değiştirir.
+ *
+ * Sadece kutu bu kayıtta işaretliyken sorgu atıyor; kendi id'si hariç
+ * tutuluyor (anasayfa sayfasını tekrar kaydetmek hata vermesin). Taslak ya da
+ * gizli olsa da diğer kayıt sayılıyor — iki "anasayfa" taslağının biri
+ * yayınlandığı an çakışma zaten gerçek olurdu.
+ */
+export const enforceSingleHomepage: CollectionBeforeValidateHook = async ({ data, originalDoc, req }) => {
+  if (!data?.isHomepage) return data;
+  const selfId = originalDoc?.id;
+  const { docs } = await req.payload.find({
+    collection: "pages",
+    where: {
+      and: [{ isHomepage: { equals: true } }, ...(selfId != null ? [{ id: { not_equals: selfId } }] : [])],
+    },
+    limit: 1,
+    depth: 0,
+    draft: true,
+    overrideAccess: true,
+  });
+  const other = docs[0] as { title?: string; slug?: string } | undefined;
+  if (other) {
+    const name = other.title || other.slug || "?";
+    const message =
+      req.i18n?.language === "en"
+        ? `"${name}" is already the homepage. Untick "Use This Page as the Homepage" there first, then tick it here.`
+        : `"${name}" zaten anasayfa olarak işaretli. Önce o sayfada "Bu Sayfa Anasayfa Olsun" kutusunu kaldırın, sonra burada işaretleyin.`;
+    throw new APIError(message, 400, undefined, true);
+  }
+  return data;
+};
+
 export const pagesRead: Access = (args) => {
   const base = publishedOrAuthenticated(args);
   if (base === true) return true;
@@ -1561,6 +1598,12 @@ export const Pages: CollectionConfig = {
           tr: "Sayfanın adı — hem sayfanın başlığı hem de URL'nin otomatik türetileceği kaynak metin.",
           en: "The page's name — both the page's title and the source text the URL is auto-derived from.",
         },
+        // 16.09.2026: "Bu Sayfa Anasayfa Olsun" işaretliyken bu alanı doldurup
+        // kilitleyen sarmalayıcı — bkz. HomepageAwareTitleField.tsx (Payload'ın
+        // `admin.readOnly`'si boolean olduğu için koşullu kilit alan
+        // tanımıyla yazılamıyor). İşaretli değilken Payload'ın kendi metin
+        // alanının aynısı.
+        components: { Field: "/components/HomepageAwareTitleField#default" },
       },
     },
     {
@@ -1654,6 +1697,37 @@ export const Pages: CollectionConfig = {
     },
     {
       /**
+       * 16.09.2026 — `/` artık sihirli bir slug'a değil BU kutuya bakıyor.
+       *
+       * Önceden site, anasayfayı `slug === "anasayfa"` diye arıyordu. Bu bağ
+       * görünmez bir anlaşmaya dayanıyordu: editör sayfaya "Vodafone Pay Ana
+       * Sayfa" başlığı verse slug `vodafone-pay-ana-sayfa` olur ve `/` onu
+       * asla bulamazdı — editörün bunu anlamasının hiçbir yolu yoktu.
+       *
+       * Kutu işaretliyken başlık alanı da otomatik dolup kilitleniyor
+       * (HomepageAwareTitleField): anasayfaya başlık düşünmek zorunda
+       * kalmıyorsun, ama `title`/`slug` zorunlu alanları da boş kalmıyor.
+       *
+       * Tekillik `enforceSingleHomepage` hook'uyla korunuyor — ikinci bir
+       * sayfada işaretlenirse kayıt reddediliyor. "Anasayfa yoksa ne olur?"
+       * sorusunun cevabı bilinçli olarak "404": bir zamanlar burada elle
+       * yazılmış bir yedek anasayfa vardı ve CMS'e ulaşılamadığında sessizce
+       * onu deploy'a gömüyordu (bkz. site reposundaki `src/app/page.tsx`).
+       */
+      name: "isHomepage",
+      type: "checkbox",
+      defaultValue: false,
+      label: { tr: "Bu Sayfa Anasayfa Olsun", en: "Use This Page as the Homepage" },
+      admin: {
+        position: "sidebar",
+        description: {
+          tr: "İşaretlerseniz bu sayfa sitenin kök adresinde (/) yayınlanır ve başlık alanı kilitlenir — anasayfaya ayrıca başlık girmeniz gerekmez. Aynı anda yalnızca BİR sayfa anasayfa olabilir; ikinci bir sayfada işaretlerseniz kayıt hata verir. Yayında ve Görünürlük 'Herkese Açık' olduğunda devreye girer.",
+          en: "Check this and the page is published at the site root (/), and the title field is locked — you don't need to give the homepage a title. Only ONE page can be the homepage at a time; ticking it on a second page makes the save fail. It takes effect once the page is published and its Visibility is 'Public'.",
+        },
+      },
+    },
+    {
+      /**
        * RFP follow-up: bir sayfayı kaydedip yayınlamak, onu header'daki
        * "Ürünler" menüsünde göstermeye yetmiyordu — editörün AYRI bir
        * koleksiyona (NavLinks) gidip elle, doğru slug'ı kendi yazarak bir
@@ -1667,9 +1741,9 @@ export const Pages: CollectionConfig = {
        * yazılmadığı için "menüdeki link yanlış sayfaya gidiyor" hatası da
        * yapısal olarak imkânsız hale geliyor.
        *
-       * NavLinks KALDIRILMADI: hâlâ Pages'te olmayan elle yazılmış rotalar
-       * (/faturana-yansit, /vodafone-pay-kart) ve dış bağlantılar için tek
-       * yol o. Header iki kaynağı birleştirir.
+       * 16.09.2026: NavLinks'in `header-products` bölümü KALDIRILDI — menünün
+       * iki kaynağı olduğu için aynı sayfa iki kez listelenebiliyordu. Artık
+       * o menüye bir sayfa koymanın tek yolu bu kutu.
        */
       name: "showInProductsMenu",
       type: "checkbox",
@@ -1747,7 +1821,7 @@ export const Pages: CollectionConfig = {
   ],
   hooks: {
     beforeOperation: [denyUnauthenticatedDraftRead],
-    beforeValidate: [generateSlug, preventSelfParent],
+    beforeValidate: [generateSlug, preventSelfParent, enforceSingleHomepage],
     beforeChange: [
       setOwnerOnCreate("createdBy"),
       assignNextFlaggedOrder({ collection: "pages", flagField: "showInProductsMenu", orderField: "productsMenuOrder" }),

@@ -125,9 +125,15 @@ export const NavLinks: CollectionConfig = {
        * seçeneği geri eklemek birkaç satır; o zaman Header.tsx'e href bazlı
        * tekilleştirme de gerekir.
        *
-       * Postgres tarafında `enum_nav_links_section` tipinden `header-products`
-       * değeri SİLİNMEDİ — Postgres enum değeri düşürmeyi desteklemiyor
-       * (tipi yeniden yaratmak gerekir) ve kullanılmayan bir değer zararsız.
+       * Postgres tarafı (17.09.2026'da düzeltildi): önce "enum değeri
+       * düşürülmüyor, kullanılmayan değer zararsız" diye bırakılmıştı. Yanlıştı:
+       * Payload'ın kendi şema senkronu seçenek kalkınca enum'u YENİDEN kuruyor,
+       * ve o değeri taşıyan tek bir eski sürüm satırı bile kalsa bu senkron
+       * "invalid input value for enum" hatasıyla tamamen duruyor (yerelde tam
+       * olarak böyle bulundu). Değer artık
+       * `scripts/clover-schema-migration-02-09-to-17-09-2026.sql` ile
+       * düşürülüyor — önce `nav-links-products-menu-migration-16-09-2026.sql`
+       * veri göçü çalıştırılmalı.
        */
       options: [
         { label: { tr: "Header — Ana Menü", en: "Header — Main Menu" }, value: "header-main" },

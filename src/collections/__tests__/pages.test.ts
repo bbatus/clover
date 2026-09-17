@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PayloadRequest } from "payload";
-import { categoryExistsValidate, generateSlug, pagesRead, preventSelfParent } from "@/collections/Pages";
+import { categoryExistsValidate, enforceSingleHomepage, generateSlug, pagesRead, preventSelfParent } from "@/collections/Pages";
 import { CATEGORY_SCOPES } from "@/collections/Categories";
 
 function fakeReq(existingSlugs: string[] = []): { req: PayloadRequest; count: ReturnType<typeof vi.fn> } {
@@ -122,5 +122,51 @@ describe("Pages categoryExistsValidate", () => {
   it("answers in English when the editor's admin language is English", async () => {
     const result = await validate("nope", { req: reqWithCategories(["genel"], "en") });
     expect(result).toContain("is not a category");
+  });
+});
+
+/**
+ * 16.09.2026: `/` renders the page whose "Bu Sayfa Anasayfa Olsun" box is
+ * ticked. Two ticked pages would leave `/` choosing by sort order — a choice
+ * no editor can see — so a second one is refused outright.
+ */
+describe("Pages enforceSingleHomepage", () => {
+  function reqWithHomepages(others: { id: string | number; title: string }[], language = "tr") {
+    const find = vi.fn(async () => ({ docs: others }));
+    return { req: { payload: { find }, i18n: { language } } as unknown as PayloadRequest, find };
+  }
+
+  it("refuses a second homepage and names the page that already is one", async () => {
+    const { req } = reqWithHomepages([{ id: 6, title: "Anasayfa" }]);
+    await expect(enforceSingleHomepage({ data: { isHomepage: true }, originalDoc: { id: 9 }, req } as never)).rejects.toThrow(
+      /"Anasayfa" zaten anasayfa/
+    );
+  });
+
+  it("answers in English when the admin is in English", async () => {
+    const { req } = reqWithHomepages([{ id: 6, title: "Home" }], "en");
+    await expect(enforceSingleHomepage({ data: { isHomepage: true }, originalDoc: { id: 9 }, req } as never)).rejects.toThrow(
+      /"Home" is already the homepage/
+    );
+  });
+
+  it("lets the current homepage be saved again (excludes its own id from the check)", async () => {
+    const { req, find } = reqWithHomepages([]);
+    const data = { isHomepage: true, title: "Anasayfa" };
+    await expect(enforceSingleHomepage({ data, originalDoc: { id: 6 }, req } as never)).resolves.toBe(data);
+    const where = (find.mock.calls[0] as unknown as [{ where: unknown }])[0].where;
+    expect(JSON.stringify(where)).toContain('"not_equals":6');
+  });
+
+  it("counts drafts too, so two unpublished homepages can't race each other live", async () => {
+    const { req, find } = reqWithHomepages([]);
+    await enforceSingleHomepage({ data: { isHomepage: true }, originalDoc: undefined, req } as never);
+    expect((find.mock.calls[0] as unknown as [{ draft: boolean }])[0].draft).toBe(true);
+  });
+
+  it("doesn't query at all when the box isn't ticked", async () => {
+    const { req, find } = reqWithHomepages([{ id: 6, title: "Anasayfa" }]);
+    await enforceSingleHomepage({ data: { isHomepage: false }, originalDoc: { id: 9 }, req } as never);
+    expect(find).not.toHaveBeenCalled();
   });
 });
