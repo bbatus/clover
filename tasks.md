@@ -2068,3 +2068,91 @@ vardı, dokunulmadı). Docker'da gerçek `--build` sonrası canlı doğrulama:
 Ürünler menüsü 6 ürün, her biri **tek kez**, sıra korunmuş; `/site-haritasi`
 Ürünler grubu aynı 6 kayıtla duruyor; clover build'inde "Header — Ürünler"
 seçeneği yok, `alt` alanı `required` taşımıyor.
+
+## 49. Sayfa devralma planı — Faz 1: anasayfa kutusu (17.09.2026)
+
+**İstek (özet):** Elle yazılmış bazı sayfaların (ör. /iletisim) editör
+tarafından CMS'te aynı URL'le oluşturulan bir sayfayla devralınabilmesi —
+Maker ve Checker'dan ekstra onayla; sayfa yayından kalkınca fallback kendiliğinden
+geri gelmeli. Ayrıca "anasayfa için başlık girmeden nasıl sayfa oluşturacağım?"
+
+**Onaylanan kararlar:**
+1. Devralma beyaz listeyle: /iletisim, /bilgi-guvenligi,
+   /web-sitesi-hukum-ve-sartlari, /gizlilik-ve-guvenlik-politikasi,
+   /kurumsal-yonetim, /faydali-bilgiler. **/cerez-politikasi dışarıda**
+   (59 satırlık çerez tablosunun blok karşılığı yok). /kampanyalar, /blog,
+   /sikca-sorulan-sorular vb. kilitli (gerçek uygulama mantıkları var).
+2. "Fallback aktif mi" türetilmiş: o slug'da yayında bir Page varsa devralınmış.
+3. Hem Maker ("Onaya Gönder") hem Checker ("Yayınla") ayrı bir devralma onayı görür.
+4. Eski rota dosyaları silinmiyor — geri dönülebilsin.
+5. Anasayfa: slug değil kutu; işaretliyken başlık otomatik dolup kilitlenir.
+   Anasayfa yoksa `/` 404 (sessiz yedek yok).
+
+**Fazlar:** Faz 1 anasayfa kutusu (BU MADDE) · Faz 2 devralma mekanizması +
+çift onay · Faz 3 görünürlük (Site Sayfaları, SEO/breadcrumb takibi, önizleme
+`draftMode()` desteği).
+
+### Faz 1 — yapılanlar
+
+- [x] Pages: `isHomepage` kutusu + `enforceSingleHomepage` (ikinci anasayfa
+      reddedilir, mevcut olanın adı söylenir).
+- [x] `HomepageAwareTitleField`: kutu işaretliyken başlık "Anasayfa" olarak
+      dolar + kilitlenir + mesaj. Mevcut başlığın üzerine yazmaz.
+- [x] Site: `/` = işaretli sayfa; işaretli sayfanın kendi slug'ı → 308 `/`;
+      sitemap/generateStaticParams bayrağa göre. `HOMEPAGE_SLUG` silindi.
+- [x] Testler: clover 577/577 (+5), site 397/397.
+
+**DB — göç scriptleri (canlıya almadan önce, BU SIRAYLA):**
+1. `scripts/nav-links-products-menu-migration-16-09-2026.sql` (VERİ — #48)
+   *17.09'da güncellendi:* bölüm değiştirmiş linklerin eski sürüm satırlarını
+   da temizliyor. Bu olmadan Payload'ın şema senkronu enum'u yeniden kurarken
+   duruyordu (yerelde tam böyle bulundu).
+2. `scripts/clover-schema-migration-02-09-to-17-09-2026.sql` (ŞEMA + anasayfa
+   işaretleme verisi). Bekleyen `...-02-09-to-16-09-2026.sql` genişletilip
+   yeniden adlandırıldı (hiçbir yere uygulanmamıştı). Veri script'i önce
+   çalışmazsa bu script hata verip hiçbir şey uygulamadan geri döner.
+
+**KULLANICIYA HATIRLATMA:** Bu iki script sırayla çalıştırılmadan clover'ın
+yeni imajı prod'a alınırsa `/` 404 verir (anasayfa işaretli değil) ve Ürünler
+menüsünden 3 ürün düşer.
+
+**Doğrulama:**
+- Script: taban zincir (test-db-schema → 01-09-to-02-09 → yeni script) boş
+  scratch DB'de → TAM şema pg_dump, Payload push'unu almış dev DB'yle birebir
+  aynı (10.933 satır). Veri bölümü gerçek verinin kopyasında: 1 sayfa + 13
+  sürüm işaretlendi; tekrar çalıştırmada 0.
+- Canlı (`next dev`, yeni kod + dev DB): `/` işaretli sayfayı basıyor,
+  `/anasayfa` → 308 `/`, diğer sayfalar etkilenmiyor. Bayrak başka sayfaya
+  taşınınca `/aninda-bakiye` → 308 `/`, `/anasayfa` → 200; geri alınınca eski
+  hali. Yani `/` slug'ı değil bayrağı takip ediyor.
+
+**Doğrulama sırasında bulunan önceden var olan sorunlar:**
+- **Prod'da gerçek hata (düzeltildi, yukarıdaki şema script'inde):**
+  01.09 taban script'i 28.08'de elle yazılmış SQL'lerin şemasını dondurmuştu.
+  Taslak modlu Kategoriler/Temsilciler'de NOT NULL kısıtları kalmış — eksik
+  alanlı bir taslak kaydı DB'de 500'e düşer. Ayrıca zararsız kayma: emekli
+  hayalet koleksiyonların 8 enum tipi, Payload'dan farklı adlı 6 index + 2 FK,
+  1 eksik default, 2 eksik index. 02.09'daki doğrulamalar tablo bazlı olduğu
+  için görünmemişti; bundan sonra TAM şema diff'i yapılıyor.
+- 16.09'daki "enum değeri düşürülmüyor, zararsız" iddiası yanlıştı (bkz. 1.).
+
+**Açık kalanlar:**
+- [ ] **Admin UI tarayıcıda doğrulanmadı:** kutu + başlığın dolup kilitlenmesi
+      ve ikinci anasayfa hata mesajı panelde görülmedi. Sebep: Docker
+      rebuild'i asılı (aşağıda) ve panele girmek için şifre yazmam gerekiyor,
+      bunu yapmıyorum. Mantık birim testleriyle kapsanıyor ama AGENTS.md
+      kuralı gereği panelde bakılmalı.
+- [ ] **Docker rebuild bloke:** `node:24-alpine` 16.09'daki
+      `docker image prune -af --filter until=24h` ile silinmiş; şimdi
+      `docker pull` Docker Desktop içinde asılı kalıyor (curl ile Docker Hub'a
+      erişim var — sorun Desktop tarafında, muhtemelen `credsStore: desktop`
+      yardımcısı). Docker Desktop'ın yeniden başlatılması gerekebilir;
+      diğer container'ları etkileyeceği için kullanıcıya bırakıldı. Çalışan
+      container'lar ESKİ kodla ve tutarlı çalışıyor (DB'deki yeni kolon eski
+      kodu bozmuyor).
+- [ ] **`payload-types.ts` yeniden üretildi → dokunulmayan dosyalarda 21 tip
+      hatası** (hooks/ordering.ts, referentialIntegrity.ts, audit.ts,
+      autoSlug.ts, payload.config.ts, FeesAndLimitsApp.tsx). Dosya gitignore'da,
+      `next dev` onu taze şemadan üretince bayat bir önceki sürümün maskelediği
+      tip borcu açığa çıktı. Bu turda değişen dosyaların hepsi temiz. CI bu
+      dosyayı üretmiyor.
