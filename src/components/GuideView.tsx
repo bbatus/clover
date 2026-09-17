@@ -43,8 +43,11 @@ export default async function GuideView(props: {
       visibleEntities={visibleEntities}
       viewType="guide"
     >
-      <h1>{t("guide.title")}</h1>
-      <GuideApp />
+      {/* Same page gutter as every other admin view — see .cm-view-pad. */}
+      <div className="cm-view-pad">
+        <h1>{t("guide.title")}</h1>
+        <GuideApp />
+      </div>
     </DefaultTemplate>
   );
 }

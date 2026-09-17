@@ -393,7 +393,13 @@ a {
  * the heading stayed against the edge. `.cm-view-pad` wraps the whole view.
  */
 .cm-view-pad {
-  padding: 2rem;
+  /* 17.09.2026 kullanıcı geri bildirimi: "Sayfalar'da sidebar ile arasında
+     güzel bir boşluk var, Erişim Matrisi / Dashboard / Geri Bildirim'de yok".
+     Ölçüldü (1440px): Payload'ın kendi ekranları <Gutter> ile 60px
+     (`--gutter-h`) başlıyor; bu sınıf 26px (2rem × 13px taban), Erişim
+     Matrisi ve Nasıl Kullanılır? hiç sarılmadığı için 0px'ti. Yatay boşluk
+     artık Payload'ın aynı değişkeni — mobilde de onunla birlikte küçülüyor. */
+  padding: 2rem var(--gutter-h);
 }
 
 .account-form {
@@ -560,7 +566,8 @@ a {
    the previous CRUD version carried, per the repo's "no new inline styles in
    the CMS" rule. */
 .cm {
-  padding: 2rem;
+  /* Yatay boşluk Payload'ın koleksiyon ekranlarıyla aynı — bkz. .cm-view-pad. */
+  padding: 2rem var(--gutter-h);
 }
 
 .cm--dashboard {

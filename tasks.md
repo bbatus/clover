@@ -2179,3 +2179,10 @@ menüsünden 3 ürün düşer.
 - **DB migration:** `scripts/clover-schema-migration-02-09-to-17-09-2026.sql` dosyasına 6. bölüm eklendi. İçerik: 2 yeni enum, `fee_rows.row_type/highlight_value/note` ve bunların `_fee_rows_v` karşılıkları, `limit_tables.footnote` ve `_limit_tables_v.version_footnote`. Doğrulama: baseline + iki script boş DB'ye yüklendi, tüm şemanın `pg_dump --schema-only` çıktısı dev DB ile satırı satırına aynı (11.479 satır).
 - ⚠️ **Deploy öncesi çalıştırılmalı:** önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql` (6. bölüm dahil). Çalıştırılmazsa ücret/limit API'si yeni kolonları bulamaz ve sayfa hata verir.
 - tsc: 21 hata, hepsi eskiden beri var (yeniden üretilen payload-types kaynaklı, sayı değişmedi); eslint temiz; testler 580/580.
+
+## 53. Özel admin sayfalarında sidebar ile içerik arası boşluk (17.09.2026)
+
+- Kullanıcı: "Sayfalar'da içerik sidebar'dan güzel bir boşlukla başlıyor, Erişim Matrisi / Dashboard / Geri Bildirim'de yok."
+- Ölçüm (1440px, sidebar'ın sağ kenarından içeriğin başladığı yere kadar olan yatay boşluk): Payload'ın kendi ekranları (Sayfalar, Kullanıcılar, İletişim Bilgileri, doküman düzenleme) `<Gutter>` üzerinden `--gutter-h` = **60px**. Bizim özel view'larda: Anasayfa, Tüm İçerikler, Ücretler ve Limitler, Geri Bildirim ve Profil **26px** (`.cm` / `.cm-view-pad` → `padding: 2rem`); Erişim Matrisi ve Nasıl Kullanılır? **0px** (hiç sarmalayıcı yoktu).
+- Düzeltme: `.cm` ve `.cm-view-pad` yatay dolguyu `var(--gutter-h)`'den alıyor (dikey 2rem aynı kaldı), böylece mobilde de Payload ekranlarıyla birlikte küçülüyor. `AccessMatrixView` ile `GuideView` içeriği `.cm-view-pad` içine alındı.
+- Doğrulama: `next dev` 3099 + headless Chrome, sidebar açık ve kapalı. 9 ekranın hepsinde içerik sidebar kenarından 60px sonra başlıyor (açıkken x=335, nav sağ kenarı 275). Testler geçti. DB değişikliği yok.

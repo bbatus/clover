@@ -48,12 +48,15 @@ export default async function AccessMatrixView(props: {
       visibleEntities={visibleEntities}
       viewType="access-matrix"
     >
-      <h1>{t("accessMatrix.title")}</h1>
-      {user?.role && VIEWABLE_ROLES.includes(user.role) ? (
-        <AccessMatrixApp />
-      ) : (
-        <p className="access-matrix__error">{t("accessMatrix.forbidden")}</p>
-      )}
+      {/* Same page gutter as every other admin view — see .cm-view-pad. */}
+      <div className="cm-view-pad">
+        <h1>{t("accessMatrix.title")}</h1>
+        {user?.role && VIEWABLE_ROLES.includes(user.role) ? (
+          <AccessMatrixApp />
+        ) : (
+          <p className="access-matrix__error">{t("accessMatrix.forbidden")}</p>
+        )}
+      </div>
     </DefaultTemplate>
   );
 }
