@@ -29,6 +29,7 @@ export const COLLECTION_LABELS: Record<string, { tr: string; en: string }> = {
   documents: { tr: "Dokümanlar", en: "Documents" },
   "contact-info": { tr: "İletişim Bilgileri", en: "Contact Info" },
   "footer-settings": { tr: "Footer Yönetimi", en: "Footer Management" },
+  "seo-files": { tr: "SEO Dosyaları", en: "SEO Files" },
 };
 
 /** Collections with `versions.drafts: true` — these can be split published/taslak. Everything else is a flat total. */

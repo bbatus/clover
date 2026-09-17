@@ -11,7 +11,7 @@ import { COLLECTION_LABELS, DRAFT_ENABLED_COLLECTIONS } from "@/lib/collectionLa
  * collection; see the comment on each category for which collections use it
  * and why.
  */
-type Category = "standard" | "media" | "campaigns" | "users" | "audit-logs" | "contact-info" | "footer-settings";
+type Category = "standard" | "media" | "campaigns" | "users" | "audit-logs" | "contact-info" | "draft-global";
 
 const CATEGORY_BY_COLLECTION: Record<string, Category> = {
   // create: standardCreate, update: standardReadWrite, delete: standardDelete
@@ -37,7 +37,8 @@ const CATEGORY_BY_COLLECTION: Record<string, Category> = {
   "contact-info": "contact-info",
   // Global (single record, no create/delete) with drafts: standardReadWrite +
   // denyMakerPublishGlobal/denyMakerEditPublishedGlobal (globals/FooterSettings.ts)
-  "footer-settings": "footer-settings",
+  "footer-settings": "draft-global",
+  "seo-files": "draft-global",
 };
 
 export type PermissionFlags = {
@@ -107,7 +108,7 @@ const MATRIX: Record<Category, Record<RoleValue, PermissionFlags>> = {
     [G_MAKER]: { view: false, create: false, update: false, publish: false, delete: false },
     [G_CHECKER]: { view: false, create: false, update: false, publish: false, delete: false },
   },
-  "footer-settings": {
+  "draft-global": {
     [NV_MAKER]: { view: true, create: false, update: true, publish: true, delete: false },
     [NV_CHECKER]: { view: true, create: false, update: true, publish: true, delete: false },
     [G_MAKER]: { view: true, create: false, update: true, publish: false, delete: false },
@@ -268,9 +269,9 @@ export function getRolePermissionSummary(
   if (category === "users") return { roleLabel, lines: usersSummaryLines(role, locale) };
   if (category === "contact-info") return { roleLabel, lines: contactInfoSummaryLines(flags, locale) };
 
-  // footer-settings is a drafts-enabled global, deliberately kept out of
+  // Drafts-enabled globals are deliberately kept out of
   // DRAFT_ENABLED_COLLECTIONS (that set drives collection-API queries).
-  const hasDrafts = DRAFT_ENABLED_COLLECTIONS.has(collectionSlug) || collectionSlug === "footer-settings";
+  const hasDrafts = DRAFT_ENABLED_COLLECTIONS.has(collectionSlug) || category === "draft-global";
   return { roleLabel, lines: genericSummaryLines(flags, hasDrafts, locale) };
 }
 

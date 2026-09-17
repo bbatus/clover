@@ -391,4 +391,22 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
       ],
     },
   },
+  "seo-files": {
+    tr: {
+      title: "SEO Dosyaları",
+      steps: [
+        "robots.txt arama motoru botlarına hangi adresleri tarayabileceklerini söyler; llms.txt ise yapay zekâ sistemlerine sitenin önemli sayfalarını anlatır.",
+        "Değişiklik taslak olarak kaydedilir; Checker onaylayıp yayınladığında sitede /robots.txt ve /llms.txt adreslerinde görünür.",
+        "robots.txt'de 'User-agent: *' altına 'Disallow: /' yazmak siteyi aramadan tamamen kaldıracağı için yayınlanamaz. 'Sitemap:' satırını site kendisi ekler.",
+      ],
+    },
+    en: {
+      title: "SEO Files",
+      steps: [
+        "robots.txt tells search engine bots which addresses they may crawl; llms.txt tells AI systems which pages of the site matter.",
+        "Changes are saved as a draft; once a Checker approves and publishes, they show on the site at /robots.txt and /llms.txt.",
+        "'Disallow: /' under 'User-agent: *' in robots.txt would remove the whole site from search, so it can't be published. The site adds the 'Sitemap:' line itself.",
+      ],
+    },
+  },
 };

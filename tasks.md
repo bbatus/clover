@@ -2242,3 +2242,23 @@ menüsünden 3 ürün düşer.
 - Yerel dev veri: İletişim Bilgileri global'ine canlı değerler girildi; blog #1, #2 ve #4 footer'da gösterilecek şekilde işaretlendi.
 - Testler 583/583; tsc'deki 21 hata eskiden beri var, sayı değişmedi.
 - ⚠️ **Deploy öncesi:** sıra aynı. Önce `nav-links-products-menu-migration-16-09-2026.sql`, sonra `clover-schema-migration-02-09-to-17-09-2026.sql` (10. bölüm dahil). Clover ile site BİRLİKTE deploy edilmeli: yeni site `/globals/footer-settings` ve blog `showInFooter` alanını okuyor.
+
+## 58. SEO Dosyaları (robots.txt + llms.txt) global'i, menü ikonları, build düzeltmeleri (17.09.2026)
+
+- Product ekibinin SEO ek istek listesinden. Canlı vendor sitesiyle karşılaştırıldı: robots.txt vendor'da da bizde de vardı, llms.txt sadece vendor'da vardı.
+- Yeni global `SeoFiles` ("SEO Dosyaları", Site Yapısı):
+  - `robotsTxt` ve `llmsTxt` alanları (code editörü). Maker→checker FooterSettings ile aynı: drafts, `MakerAwarePublishButton`/`SaveOrSubmitButton`, global deny hook'ları, HelpButton.
+  - Başlangıç içeriği canlıdaki dosyalarla aynı (`src/lib/seoFilesDefaults.ts`). robots.txt'ye canlıdaki gibi `Disallow: /*.pdf` eklendi.
+  - Güvenlik: `User-agent: *` altında `Disallow: /` YAYINLANAMAZ (`src/lib/robotsTxtValidation.ts`, test edildi). Payload taslak kaydında alan doğrulaması çalıştırmıyor, yayına geçişte 400 + satır numaralı mesaj dönüyor; site sadece yayındaki sürümü okuyor.
+  - `Sitemap:` satırını site her ortamın kendi adresiyle ekliyor.
+  - Alanlarda `defaultValue` yok: Payload uzun metni kolon DEFAULT'una gömüyordu (her metin değişikliği şema değişikliği olurdu). İçerik migration verisi olarak ekleniyor.
+- `rolePermissions`: `footer-settings` ve `seo-files` ortak `draft-global` kategorisinde; etiket, yardım içeriği ve sidebar ikonları (Footer Yönetimi + SEO Dosyaları) eklendi.
+- Build düzeltmeleri (container rebuild sırasında bulundu): `FeesAndLimitsApp.tsx`'de drawer id tipleri. `.dockerignore`'a `payload-types.ts` eklendi — `next dev`'in ürettiği bayat dosya imaja girip `next build`'i 19 tip hatasıyla kırıyordu (önceki raporlarda "eskiden beri var" denen 21 hatanın kaynağı). Şimdi tsc 0 hata.
+- Canlı DB notu (17.09.2026): `nav-links-products-menu-migration-16-09-2026.sql` canlıda "Yeni Menü Linki" (href `menu-linki`, sayfa karşılığı yok) test kaydını taşıyamadı. `02-09-to-17-09` scripti bu yüzden enum dönüşümünde durdu. Kayıt ve 3 sürümü elle silindi, script sonra başarıyla çalıştı.
+- **DB migration:** YENİ dosya `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` (11. bölüm). `02-09-to-17-09` canlıda uygulandığı için o dosya artık değiştirilmiyor.
+  - İçerik: `seo_files` / `_seo_files_v` tabloları ve 2 enum, yayınlanmış ilk kayıt (VERİ). Tekrar çalıştırılabilir. Metinler tek satırlık `E'...'` dizeleri, komut içinde boş satır yok (DBeaver güvenli).
+  - Doğrulama: tüm zincir boş DB'ye yüklendi, `pg_dump --schema-only` dev DB ile satırı satırına aynı (12.099 satır). İkinci çalıştırma da hatasız.
+  - Ayrıca `02-09-to-17-09` içindeki bir DO bloğundan boş satır silindi (DBeaver bölüyordu). Şema değişmedi.
+- Admin'de doğrulandı: SEO Dosyaları ekranı, iki editör, açıklamalar, sidebar ikonları; `Disallow: /` ile yayınlama denemesi 400 döndü.
+- Testler 589/589, tsc 0 hata.
+- ⚠️ **Deploy öncesi:** canlı DB'de `clover-schema-migration-17-09-to-18-09-2026.sql` çalıştırılmalı (DBeaver, File → Open File, Alt+X). Clover ve site birlikte deploy edilmeli; yeni site `/globals/seo-files`'ı okuyor. Okuyamazsa varsayılan dosyaları sunduğu için kırılmaz.
