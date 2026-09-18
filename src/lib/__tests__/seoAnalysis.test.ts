@@ -26,6 +26,22 @@ describe("analyzeSeo — what the site will actually emit", () => {
     expect(byId(r, "descriptionFallback")?.level).toBe("warn");
   });
 
+  // 18.09.2026 review: the site reads Sayfa Meta between the page's own fields and the default.
+  it("uses a published Sayfa Meta row before the default, and the page's own fields before both", () => {
+    const meta = { seoTitle: "Anında Bakiye Yükle | Vodafone Pay", seoDescription: "Bakiyenizi saniyeler içinde yükleyin." };
+    const r = analyzeSeo({ pathPrefix: "/", descriptionFallback: "title", title: "Anında Bakiye", slug: "aninda-bakiye", pageMeta: meta });
+    expect(r.title).toBe(meta.seoTitle);
+    expect(r.description).toBe(meta.seoDescription);
+    expect(byId(r, "titleFallback")?.values).toEqual({ source: "pageMeta" });
+    expect(byId(r, "descriptionFallback")).toMatchObject({ level: "info", values: { source: "pageMeta" } });
+
+    const own = analyzeSeo({ pathPrefix: "/", descriptionFallback: "title", title: "X", seoTitle: "Kendi Başlığı", slug: "x", pageMeta: meta });
+    expect(own.title).toBe("Kendi Başlığı");
+
+    const home = analyzeSeo({ pathPrefix: "/", descriptionFallback: "title", title: "Anasayfa", isHomepage: true, pageMeta: { seoTitle: "Meta Anasayfa" } });
+    expect(home.title).toBe("Meta Anasayfa");
+  });
+
   it("serves the homepage at / with the site's own homepage defaults", () => {
     const r = analyzeSeo({ pathPrefix: "/", descriptionFallback: "title", title: "Anasayfa", slug: "anasayfa", isHomepage: true });
     expect(r.url).toBe("https://www.vodafonepay.com.tr/");

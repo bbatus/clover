@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { changedContentFields, manageCampaignSchedule, runScheduledPublishes, SCHEDULED_PUBLISH_CONTEXT } from "@/lib/campaignSchedule";
+import {
+  changedContentFields,
+  manageCampaignSchedule,
+  resetScheduledPublishRetries,
+  runScheduledPublishes,
+  SCHEDULED_PUBLISH_CONTEXT,
+  ScheduleNoLongerDueError,
+} from "@/lib/campaignSchedule";
+import { writeAuditLog } from "@/hooks/audit";
 import { formatIstanbul } from "@/lib/istanbulTime";
 import { ROLES } from "@/access/roles";
 
@@ -95,8 +103,28 @@ describe("manageCampaignSchedule", () => {
 
   it("lets the scheduler's own publish through untouched", async () => {
     const input = { _status: "published", reviewStatus: "pending" };
-    const data = await run(input, { id: 5, reviewStatus: "scheduled" }, undefined, { [SCHEDULED_PUBLISH_CONTEXT]: true });
+    const data = await run(input, { id: 5, reviewStatus: "scheduled", _status: "draft", scheduledPublishAt: PAST }, undefined, {
+      [SCHEDULED_PUBLISH_CONTEXT]: true,
+    });
     expect(data).toEqual(input);
+  });
+
+  // 18.09.2026 review: the scheduler queries first and saves later; whatever
+  // happened in between must not go live on the strength of the old approval.
+  it("refuses the scheduler's publish when the approval was dropped after its query (Maker edit in between)", async () => {
+    await expect(
+      run({ _status: "published", reviewStatus: "pending" }, { id: 5, reviewStatus: "pending", _status: "draft", scheduledPublishAt: PAST }, undefined, {
+        [SCHEDULED_PUBLISH_CONTEXT]: true,
+      })
+    ).rejects.toBeInstanceOf(ScheduleNoLongerDueError);
+  });
+
+  it("refuses the scheduler's publish when the plan was moved into the future", async () => {
+    await expect(
+      run({ _status: "published" }, { id: 5, reviewStatus: "scheduled", _status: "draft", scheduledPublishAt: FUTURE }, undefined, {
+        [SCHEDULED_PUBLISH_CONTEXT]: true,
+      })
+    ).rejects.toBeInstanceOf(ScheduleNoLongerDueError);
   });
 });
 
@@ -107,6 +135,11 @@ describe("changedContentFields", () => {
 });
 
 describe("runScheduledPublishes", () => {
+  beforeEach(() => {
+    resetScheduledPublishRetries();
+    vi.mocked(writeAuditLog).mockClear();
+  });
+
   it("queries due, approved drafts by absolute instant and publishes each as the system", async () => {
     const find = vi.fn().mockResolvedValue({ docs: [{ id: 7, scheduledPublishAt: "2026-09-18T14:30:00.000Z" }] });
     const update = vi.fn().mockResolvedValue({});
@@ -129,13 +162,51 @@ describe("runScheduledPublishes", () => {
         context: expect.objectContaining({ [SCHEDULED_PUBLISH_CONTEXT]: true }),
       })
     );
-    expect(result).toEqual({ published: ["7"], failed: [] });
+    expect(find.mock.calls[0][0]).toMatchObject({ sort: "scheduledPublishAt" });
+    expect(result).toEqual({ published: ["7"], failed: [], skipped: [] });
   });
 
   it("keeps going when one campaign fails and reports it", async () => {
     const find = vi.fn().mockResolvedValue({ docs: [{ id: 1 }, { id: 2 }] });
     const update = vi.fn().mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce({});
     const result = await runScheduledPublishes({ find, update, logger: { info: vi.fn(), error: vi.fn() } } as never);
-    expect(result).toEqual({ published: ["2"], failed: [{ id: "1", error: "boom" }] });
+    expect(result).toEqual({ published: ["2"], failed: [{ id: "1", error: "boom" }], skipped: [] });
+  });
+
+  it("counts a plan that changed mid-run as skipped, not failed", async () => {
+    const find = vi.fn().mockResolvedValue({ docs: [{ id: 3 }] });
+    const update = vi.fn().mockRejectedValue(new ScheduleNoLongerDueError());
+    const logger = { info: vi.fn(), error: vi.fn() };
+    const result = await runScheduledPublishes({ find, update, logger } as never);
+    expect(result).toEqual({ published: [], failed: [], skipped: ["3"] });
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it("backs off a failing campaign instead of retrying every tick, and audits the first failure once", async () => {
+    const find = vi.fn().mockResolvedValue({ docs: [{ id: 9, title: "Eksik Kategori" }] });
+    const update = vi.fn().mockRejectedValue(new Error("Lütfen geçersiz alanı düzeltin: Kategori"));
+    const payload = { find, update, logger: { info: vi.fn(), error: vi.fn() } };
+    const t0 = new Date("2026-09-18T14:30:00.000Z");
+
+    await runScheduledPublishes(payload as never, t0);
+    expect(writeAuditLog).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(writeAuditLog).mock.calls[0][1]).toMatchObject({
+      documentId: "9",
+      actorEmail: "sistem (zamanlanmış yayın)",
+      summary: expect.stringContaining("BAŞARISIZ"),
+    });
+
+    // 20 s later (next tick): still inside the 30 s backoff, not retried.
+    await runScheduledPublishes(payload as never, new Date(t0.getTime() + 20_000));
+    expect(update).toHaveBeenCalledTimes(1);
+
+    // After the backoff: retried, fails again, not audited a second time; next wait doubles.
+    await runScheduledPublishes(payload as never, new Date(t0.getTime() + 31_000));
+    expect(update).toHaveBeenCalledTimes(2);
+    expect(writeAuditLog).toHaveBeenCalledTimes(1);
+    await runScheduledPublishes(payload as never, new Date(t0.getTime() + 31_000 + 45_000));
+    expect(update).toHaveBeenCalledTimes(2);
+    await runScheduledPublishes(payload as never, new Date(t0.getTime() + 31_000 + 61_000));
+    expect(update).toHaveBeenCalledTimes(3);
   });
 });

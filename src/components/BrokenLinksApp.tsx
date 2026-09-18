@@ -38,6 +38,7 @@ const STRINGS = {
       "not-found": (s?: number) => `Sayfa bulunamadı${s ? ` (${s})` : ""}`,
       "server-error": (s?: number) => `Sunucu hatası${s ? ` (${s})` : ""}`,
       unreachable: () => "Ulaşılamadı",
+      "private-address": () => "İç ağ adresi — ziyaretçiler açamaz, kontrol edilmedi",
       unpublished: () => "Bağlı içerik yayında değil",
       deleted: () => "Bağlı içerik silinmiş",
       relative: () => "Adres '/' ya da 'https://' ile başlamıyor",
@@ -78,6 +79,7 @@ const STRINGS = {
       "not-found": (s?: number) => `Page not found${s ? ` (${s})` : ""}`,
       "server-error": (s?: number) => `Server error${s ? ` (${s})` : ""}`,
       unreachable: () => "Unreachable",
+      "private-address": () => "Internal network address — visitors can't open it, not checked",
       unpublished: () => "Linked content isn't published",
       deleted: () => "Linked content was deleted",
       relative: () => "Doesn't start with '/' or 'https://'",
@@ -118,7 +120,8 @@ export default function BrokenLinksApp() {
     try {
       const res = await fetch(`/api/broken-links/scan${external ? "?external=1" : ""}`, { credentials: "include" });
       if (!res.ok) {
-        setScanError(t.failed);
+        const body = (await res.json().catch(() => null)) as { errors?: { message?: string }[] } | null;
+        setScanError(body?.errors?.[0]?.message ?? t.failed);
         return;
       }
       setScan((await res.json()) as Scan);

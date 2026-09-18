@@ -9,7 +9,11 @@
  * - description: seoDescription, else campaign description / blog body's
  *   first 155 characters / (pages) the page title
  * - the homepage document instead falls back to the site's fixed homepage
- *   title and description (Sayfa Meta "/" can override those; not read here)
+ *   title and description
+ * - on Pages (homepage included) a published Sayfa Meta Bilgileri row for the
+ *   same path sits between the two, exactly as in the site's generateMetadata
+ *   (`pageMeta`, 18.09.2026 review — it used to be ignored here, so the panel
+ *   could preview and score a title the site never shows)
  */
 
 export const SITE_ORIGIN = "https://www.vodafonepay.com.tr";
@@ -48,6 +52,8 @@ export type SeoInput = {
   /** Images placed inside the rich text, with their alt texts. */
   inlineImages?: { alt?: string; filename?: string }[];
   duplicateTitleCount?: number;
+  /** Published Sayfa Meta Bilgileri row for this page's path (Pages only). */
+  pageMeta?: { seoTitle?: string | null; seoDescription?: string | null } | null;
 };
 
 export type CheckLevel = "good" | "warn" | "bad" | "info";
@@ -140,7 +146,9 @@ export function truncate(text: string, max: number): string {
 export function analyzeSeo(input: SeoInput): SeoResult {
   const baseTitle = clean(input.title);
   const seoTitle = clean(input.seoTitle);
-  const fallbackTitle = input.isHomepage ? HOMEPAGE_DEFAULT_TITLE : baseTitle ? `${baseTitle}${TITLE_SUFFIX}` : "";
+  const metaTitle = clean(input.pageMeta?.seoTitle);
+  const metaDescription = clean(input.pageMeta?.seoDescription);
+  const fallbackTitle = metaTitle || (input.isHomepage ? HOMEPAGE_DEFAULT_TITLE : baseTitle ? `${baseTitle}${TITLE_SUFFIX}` : "");
   const title = seoTitle || fallbackTitle;
 
   const seoDescription = clean(input.seoDescription);
@@ -149,7 +157,7 @@ export function analyzeSeo(input: SeoInput): SeoResult {
   else if (input.descriptionFallback === "description") fallbackDescription = clean(input.description);
   else if (input.descriptionFallback === "body") fallbackDescription = lexicalToPlainText(input.body, 155);
   else fallbackDescription = baseTitle;
-  const description = seoDescription || fallbackDescription;
+  const description = seoDescription || metaDescription || fallbackDescription;
 
   const slug = clean(input.slug);
   const path = input.isHomepage ? "/" : `${input.pathPrefix}${slug}`;
@@ -163,7 +171,7 @@ export function analyzeSeo(input: SeoInput): SeoResult {
     level: tl === 0 ? "bad" : tl > TITLE_MAX || tl < TITLE_MIN ? "warn" : "good",
     values: { length: tl, min: TITLE_MIN, max: TITLE_MAX },
   });
-  if (!seoTitle) checks.push({ id: "titleFallback", level: "info", values: { source: input.isHomepage ? "homepage" : "title" } });
+  if (!seoTitle) checks.push({ id: "titleFallback", level: "info", values: { source: metaTitle ? "pageMeta" : input.isHomepage ? "homepage" : "title" } });
 
   const dl = description.length;
   checks.push({
@@ -175,8 +183,8 @@ export function analyzeSeo(input: SeoInput): SeoResult {
     checks.push({
       id: "descriptionFallback",
       // A page's own title standing in as its description is a real problem, not just a note.
-      level: input.descriptionFallback === "title" && !input.isHomepage ? "warn" : "info",
-      values: { source: input.isHomepage ? "homepage" : input.descriptionFallback },
+      level: input.descriptionFallback === "title" && !input.isHomepage && !metaDescription ? "warn" : "info",
+      values: { source: metaDescription ? "pageMeta" : input.isHomepage ? "homepage" : input.descriptionFallback },
     });
   }
 

@@ -1133,6 +1133,17 @@ html[data-theme="dark"] .rapb-awaiting--scheduled {
   border-color: #2f6b47;
   background: #16301f;
 }
+/* 18.09.2026 review — the plan's time passed and the scheduler couldn't publish it */
+.rapb-awaiting--scheduled.rapb-awaiting--overdue {
+  color: #8a4b00;
+  border-color: #f0c27a;
+  background: #fff4e0;
+}
+html[data-theme="dark"] .rapb-awaiting--scheduled.rapb-awaiting--overdue {
+  color: #f5c27a;
+  border-color: #7a5217;
+  background: #33230c;
+}
 .rapb-schedule-error {
   margin: 0.25rem 0 0;
   color: var(--theme-error-600);

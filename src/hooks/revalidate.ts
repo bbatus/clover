@@ -12,6 +12,9 @@ import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, GlobalAfterC
  * forces every route's HTML shell to rebuild on its very next visit — not
  * just the tagged data.
  */
+/** Revalidation is best-effort; the site's own ISR interval is the fallback. */
+const REVALIDATE_TIMEOUT_MS = 5000;
+
 async function pingRevalidate(tag: string, paths?: string[], pathType?: "page" | "layout") {
   const url = process.env.SITE_REVALIDATE_URL;
   const secret = process.env.REVALIDATE_SECRET;
@@ -25,6 +28,11 @@ async function pingRevalidate(tag: string, paths?: string[], pathType?: "page" |
       method: "POST",
       headers: { "content-type": "application/json", "x-revalidate-secret": secret },
       body: JSON.stringify({ tag, paths, pathType }),
+      // 18.09.2026 review: this runs inside every save's afterChange, and now
+      // also inside the scheduled publisher and each record of a bulk action.
+      // Without a timeout a hung site pod held all of them open indefinitely
+      // (and the bulk request past the OpenShift route's own timeout).
+      signal: AbortSignal.timeout(REVALIDATE_TIMEOUT_MS),
     });
     const pathTypeSuffix = pathType ? ` (${pathType})` : "";
     const pathsSuffix = paths?.length ? ` + paths [${paths.join(", ")}]${pathTypeSuffix}` : "";

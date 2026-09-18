@@ -1,5 +1,6 @@
 import type { CollectionConfig, Endpoint } from "payload";
 import { authenticated, hasValidPreviewSecret } from "@/access/authenticated";
+import { writeAuditLog } from "@/hooks/audit";
 
 /**
  * Kırık link raporu (18.09.2026) — the "404 alan adresler" half of
@@ -34,9 +35,22 @@ export function normaliseNotFoundPath(raw: unknown): string | null {
   }
 }
 
-function referrerPath(raw: unknown): string | undefined {
+/**
+ * The referring page as origin + path only. 18.09.2026 review: the raw
+ * Referer was stored verbatim, so a visitor arriving from another site kept
+ * that site's query string here (e-mail campaign ids, search terms, at worst
+ * someone's e-mail address or a token), shown to every CMS user. Only http(s)
+ * URLs are kept; anything else is dropped rather than stored as text.
+ */
+export function referrerPath(raw: unknown): string | undefined {
   if (typeof raw !== "string" || !raw) return undefined;
-  return raw.slice(0, 500);
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return undefined;
+    return `${u.origin}${u.pathname}`.slice(0, 500);
+  } catch {
+    return undefined;
+  }
 }
 
 const recordEndpoint: Endpoint = {
@@ -73,7 +87,23 @@ const recordEndpoint: Endpoint = {
       return new Response(null, { status: 204 });
     }
     const { totalDocs } = await req.payload.count({ collection: "not-found-hits", overrideAccess: true });
-    if (totalDocs >= MAX_ROWS) return new Response(null, { status: 204 });
+    if (totalDocs >= MAX_ROWS) {
+      // 18.09.2026 review: the cap used to be permanent — once a scanner (or
+      // plain time) filled it with one-off addresses, no new 404 was ever
+      // recorded again and nothing could delete rows. Now the stalest
+      // single-hit, not-ignored address makes room; addresses seen more than
+      // once, and ones an editor marked, are never evicted this way.
+      const { docs: stale } = await req.payload.find({
+        collection: "not-found-hits",
+        where: { and: [{ count: { less_than_equal: 1 } }, { ignored: { not_equals: true } }] },
+        sort: "lastSeenAt",
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      if (!stale[0]) return new Response(null, { status: 204 });
+      await req.payload.delete({ collection: "not-found-hits", id: (stale[0] as { id: string | number }).id, overrideAccess: true });
+    }
     try {
       await req.payload.create({
         collection: "not-found-hits",
@@ -101,7 +131,13 @@ const ignoreEndpoint: Endpoint = {
       ignored = true;
     }
     if (!id) return Response.json({ errors: [{ message: "id" }] }, { status: 400 });
-    await req.payload.update({ collection: "not-found-hits", id, overrideAccess: true, data: { ignored } });
+    const row = (await req.payload.update({ collection: "not-found-hits", id, overrideAccess: true, data: { ignored } })) as { path?: string };
+    await writeAuditLog(req, {
+      action: "update",
+      collectionSlug: "not-found-hits",
+      documentId: String(id),
+      summary: `not-found-hits: "${row.path ?? id}" ${ignored ? "yok sayıldı" : "yeniden listeye alındı"}`,
+    });
     return Response.json({ ok: true });
   },
 };

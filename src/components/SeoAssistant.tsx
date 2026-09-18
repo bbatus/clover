@@ -55,8 +55,10 @@ const STRINGS = {
               ? `Başlık ${v.length} karakter — kısa. ${v.min}–${v.max} arası önerilir.`
               : `Başlık uzunluğu iyi (${v.length} karakter).`,
       titleFallback: (v: Record<string, string | number>) =>
-        v.source === "homepage"
-          ? "SEO Başlığı boş: sitenin varsayılan anasayfa başlığı kullanılacak (Sayfa Meta Bilgileri '/' kaydı doluysa o)."
+        v.source === "pageMeta"
+          ? "SEO Başlığı boş: bu adres için Sayfa Meta Bilgileri'ndeki başlık kullanılacak."
+          : v.source === "homepage"
+          ? "SEO Başlığı boş: sitenin varsayılan anasayfa başlığı kullanılacak."
           : "SEO Başlığı boş: sayfa başlığının sonuna \" | Vodafone Pay\" eklenerek kullanılacak.",
       descriptionLength: (v: Record<string, string | number>) =>
         Number(v.length) === 0
@@ -67,8 +69,10 @@ const STRINGS = {
               ? `Açıklama ${v.length} karakter — kısa. ${v.min}–${v.max} arası önerilir.`
               : `Açıklama uzunluğu iyi (${v.length} karakter).`,
       descriptionFallback: (v: Record<string, string | number>) =>
-        v.source === "homepage"
-          ? "SEO Açıklaması boş: sitenin varsayılan anasayfa açıklaması kullanılacak (Sayfa Meta Bilgileri '/' kaydı doluysa o)."
+        v.source === "pageMeta"
+          ? "SEO Açıklaması boş: bu adres için Sayfa Meta Bilgileri'ndeki açıklama kullanılacak."
+          : v.source === "homepage"
+          ? "SEO Açıklaması boş: sitenin varsayılan anasayfa açıklaması kullanılacak."
           : v.source === "title"
           ? "SEO Açıklaması boş: sayfanın başlığı açıklama olarak kullanılacak. Sayfayı anlatan 1–2 cümle yazın."
           : v.source === "body"
@@ -123,8 +127,10 @@ const STRINGS = {
               ? `Title is ${v.length} characters — short. ${v.min}–${v.max} recommended.`
               : `Title length is good (${v.length} characters).`,
       titleFallback: (v: Record<string, string | number>) =>
-        v.source === "homepage"
-          ? "SEO Title is empty: the site's default homepage title is used (or the Page Meta '/' entry, if filled)."
+        v.source === "pageMeta"
+          ? "SEO Title is empty: the title from Page Meta for this address is used."
+          : v.source === "homepage"
+          ? "SEO Title is empty: the site's default homepage title is used."
           : "SEO Title is empty: the page title plus \" | Vodafone Pay\" is used.",
       descriptionLength: (v: Record<string, string | number>) =>
         Number(v.length) === 0
@@ -135,8 +141,10 @@ const STRINGS = {
               ? `Description is ${v.length} characters — short. ${v.min}–${v.max} recommended.`
               : `Description length is good (${v.length} characters).`,
       descriptionFallback: (v: Record<string, string | number>) =>
-        v.source === "homepage"
-          ? "SEO Description is empty: the site's default homepage description is used (or the Page Meta '/' entry, if filled)."
+        v.source === "pageMeta"
+          ? "SEO Description is empty: the description from Page Meta for this address is used."
+          : v.source === "homepage"
+          ? "SEO Description is empty: the site's default homepage description is used."
           : v.source === "title"
           ? "SEO Description is empty: the page title is used as the description. Write 1–2 sentences about the page."
           : v.source === "body"
@@ -260,6 +268,30 @@ export default function SeoAssistant(props: Props) {
     };
   }, [collection, id, seoTitle]);
 
+  // Pages only: a published Sayfa Meta Bilgileri row for the same address is
+  // the site's second choice after the page's own SEO fields (18.09.2026 review).
+  const [pageMeta, setPageMeta] = useState<{ seoTitle?: string; seoDescription?: string } | null>(null);
+  const metaPath = collection === "pages" ? (isHomepage ? "/" : slug ? `/${slug}` : "") : "";
+  useEffect(() => {
+    let cancelled = false;
+    if (!metaPath) {
+      Promise.resolve().then(() => !cancelled && setPageMeta(null));
+      return () => {
+        cancelled = true;
+      };
+    }
+    const params = new URLSearchParams({ depth: "0", limit: "1" });
+    params.append("where[pageKey][equals]", metaPath);
+    params.append("where[_status][equals]", "published");
+    fetch(`/api/page-meta?${params.toString()}`, { credentials: "include" })
+      .then(async (res) => (res.ok ? (((await res.json()) as { docs: { seoTitle?: string; seoDescription?: string }[] }).docs[0] ?? null) : null))
+      .catch(() => null)
+      .then((doc) => !cancelled && setPageMeta(doc));
+    return () => {
+      cancelled = true;
+    };
+  }, [metaPath]);
+
   const result = analyzeSeo({
     title,
     seoTitle,
@@ -274,6 +306,7 @@ export default function SeoAssistant(props: Props) {
     image,
     inlineImages: inline,
     duplicateTitleCount: duplicates,
+    pageMeta,
   });
 
   const breadcrumb = result.url.replace(/^https:\/\/www\./, "").split("/").filter(Boolean).join(" › ");

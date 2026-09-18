@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { classifyLink, extractLinks, readableField, toSitePath } from "@/lib/linkScan";
-import { scanBrokenLinks } from "@/lib/brokenLinks";
-import { normaliseNotFoundPath } from "@/collections/NotFoundHits";
+import { isPrivateAddress, isPublicHttpTarget, scanBrokenLinks } from "@/lib/brokenLinks";
+import { normaliseNotFoundPath, referrerPath } from "@/collections/NotFoundHits";
 
 describe("linkScan", () => {
   it("turns same-site URLs into paths and keeps other sites external", () => {
@@ -48,6 +48,8 @@ describe("linkScan", () => {
   });
 });
 
+const publicDns = async () => ["93.184.216.34"];
+
 describe("scanBrokenLinks", () => {
   it("asks the site about each distinct internal path once and reports 404s with every place they appear", async () => {
     process.env.SITE_REVALIDATE_URL = "http://vodafonepaycomtr:3000/api/revalidate";
@@ -82,17 +84,77 @@ describe("scanBrokenLinks", () => {
     const fetchImpl = vi.fn(async () => {
       throw new Error("ENOTFOUND");
     });
-    const result = await scanBrokenLinks(payload as never, { external: true, fetchImpl: fetchImpl as never });
+    const result = await scanBrokenLinks(payload as never, { external: true, fetchImpl: fetchImpl as never, resolve: publicDns });
     expect(result.broken[0]).toMatchObject({ type: "external", reason: "unreachable" });
+  });
+
+  // 18.09.2026 review: content is editor-controlled; the scan must not become a probe of the cluster network.
+  it("never fetches external links that point at internal, loopback, link-local or metadata addresses", async () => {
+    const urls = [
+      "http://169.254.169.254/latest/meta-data/",
+      "http://127.0.0.1:3000/api/users",
+      "http://10.0.0.5:5432/",
+      "http://[::1]/",
+      "http://localhost/admin",
+      "http://clover-postgres:5432/",
+      "https://ok.example.com/",
+    ];
+    const payload = {
+      find: vi.fn(async () => ({ docs: [{ id: 1, label: "x", links: urls.map((href) => ({ href })) }] })),
+      findGlobal: vi.fn(async () => ({})),
+      findByID: vi.fn(),
+    };
+    const resolve = vi.fn(async (host: string) => (host === "clover-postgres" ? ["172.30.12.4"] : ["93.184.216.34"]));
+    const fetchImpl = vi.fn<(url: string) => Promise<Response>>(async () => new Response(null, { status: 200 }));
+    const result = await scanBrokenLinks(payload as never, { external: true, fetchImpl: fetchImpl as never, resolve });
+    expect(fetchImpl.mock.calls.map((c) => c[0])).toEqual(["https://ok.example.com/"]);
+    expect(result.broken.filter((b) => b.reason === "private-address").map((b) => b.target).sort()).toEqual(urls.slice(0, 6).sort());
+  });
+
+  it("reads every page of a large collection instead of stopping at a fixed limit", async () => {
+    const find = vi.fn(async ({ page }: { page: number }) => ({
+      docs: page === 1 ? [{ id: 1, label: "a", href: "/a" }] : [{ id: 2, label: "b", href: "/b" }],
+      hasNextPage: page === 1,
+    }));
+    const payload = { find, findGlobal: vi.fn(async () => ({})), findByID: vi.fn() };
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 404 }));
+    const result = await scanBrokenLinks(payload as never, { fetchImpl: fetchImpl as never });
+    expect(result.broken.map((b) => b.target).sort()).toEqual(["/a", "/b"]);
   });
 
   it("does not report sites that merely refuse bots (LinkedIn 999, 403, 429)", async () => {
     const payload = { find: vi.fn(async () => ({ docs: [] })), findGlobal: vi.fn(async () => ({ linkedinUrl: "https://www.linkedin.com/company/x" })), findByID: vi.fn() };
     for (const status of [999, 403, 429]) {
       const fetchImpl = vi.fn(async () => ({ status }) as Response);
-      const result = await scanBrokenLinks(payload as never, { external: true, fetchImpl: fetchImpl as never });
+      const result = await scanBrokenLinks(payload as never, { external: true, fetchImpl: fetchImpl as never, resolve: publicDns });
       expect(result.broken).toEqual([]);
     }
+  });
+});
+
+describe("isPrivateAddress / isPublicHttpTarget", () => {
+  it("classifies addresses", () => {
+    for (const ip of ["10.1.2.3", "172.16.0.1", "172.31.229.152", "192.168.1.1", "127.0.0.1", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "224.0.0.1"]) {
+      expect(isPrivateAddress(ip), ip).toBe(true);
+    }
+    for (const ip of ["93.184.216.34", "8.8.8.8", "172.32.0.1", "2606:4700::1111"]) {
+      expect(isPrivateAddress(ip), ip).toBe(false);
+    }
+  });
+
+  it("refuses non-http schemes and hosts that resolve to nothing or to any private address", async () => {
+    expect(await isPublicHttpTarget("ftp://example.com/", async () => ["93.184.216.34"])).toBe(false);
+    expect(await isPublicHttpTarget("https://mixed.example/", async () => ["93.184.216.34", "10.0.0.1"])).toBe(false);
+    expect(await isPublicHttpTarget("https://nx.example/", async () => { throw new Error("ENOTFOUND"); })).toBe(false);
+    expect(await isPublicHttpTarget("https://www.linkedin.com/x", async () => ["13.107.42.14"])).toBe(true);
+  });
+});
+
+describe("referrerPath", () => {
+  it("keeps origin and path only, drops query strings and non-web schemes", () => {
+    expect(referrerPath("https://mail.example.com/inbox?user=ali@x.com&t=abc#m")).toBe("https://mail.example.com/inbox");
+    expect(referrerPath("javascript:alert(1)")).toBeUndefined();
+    expect(referrerPath("not a url")).toBeUndefined();
   });
 });
 

@@ -96,6 +96,7 @@ export default function RoleAwarePublishButton() {
     scheduleConfirm: tt("roleAwarePublishButton.scheduleConfirm"),
     scheduling: tt("roleAwarePublishButton.scheduling"),
     scheduledNotice: tt("roleAwarePublishButton.scheduledNotice"),
+    scheduleOverdue: tt("roleAwarePublishButton.scheduleOverdue"),
     cancelSchedule: tt("roleAwarePublishButton.cancelSchedule"),
     cancellingSchedule: tt("roleAwarePublishButton.cancellingSchedule"),
     awaitingScheduled: tt("roleAwarePublishButton.awaitingScheduled"),
@@ -135,6 +136,11 @@ export default function RoleAwarePublishButton() {
   const scheduleIsFuture = Boolean(scheduledPublishAt) && new Date(scheduledPublishAt as string).getTime() > now;
   const scheduleLabel = scheduledPublishAt ? formatIstanbul(scheduledPublishAt) : "";
   const withDate = (text: string) => text.replace("{date}", scheduleLabel);
+  // Still "scheduled" two minutes after its time (the scheduler runs every 30 s):
+  // the publish failed — say so instead of promising a time already gone.
+  const scheduleOverdue = Boolean(scheduledPublishAt) && new Date(scheduledPublishAt as string).getTime() < now - 2 * 60_000;
+  const scheduledText = withDate(scheduleOverdue ? t.scheduleOverdue : t.scheduledNotice);
+  const scheduledClass = `rapb-awaiting rapb-awaiting--scheduled${scheduleOverdue ? " rapb-awaiting--overdue" : ""}`;
   const { code: localeCode } = useLocale();
   const { config } = useConfig();
 
@@ -312,7 +318,7 @@ export default function RoleAwarePublishButton() {
 
   if (role === ROLES.GROWTH_MAKER && !isActiveDelegate) {
     if (!hasPublishedDoc && reviewStatus === "scheduled") {
-      return <div className="rapb-awaiting rapb-awaiting--scheduled">{withDate(t.scheduledNotice)}</div>;
+      return <div className={scheduledClass}>{scheduledText}</div>;
     }
     if (!hasPublishedDoc && scheduleIsFuture) {
       return <div className="rapb-awaiting">{withDate(t.awaitingScheduled)}</div>;
@@ -370,7 +376,7 @@ export default function RoleAwarePublishButton() {
   if (!hasPublishedDoc && reviewStatus === "scheduled" && !modified) {
     return (
       <div className="vf-live-actions">
-        <span className="rapb-awaiting rapb-awaiting--scheduled">{withDate(t.scheduledNotice)}</span>
+        <span className={scheduledClass}>{scheduledText}</span>
         <button
           type="button"
           className={`btn btn--style-secondary btn--size-medium${scheduling ? " btn--disabled" : ""}`}
@@ -475,6 +481,7 @@ type ButtonStrings = Record<
   | "scheduleConfirm"
   | "scheduling"
   | "scheduledNotice"
+  | "scheduleOverdue"
   | "cancelSchedule"
   | "cancellingSchedule"
   | "awaitingScheduled",

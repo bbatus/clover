@@ -37,6 +37,14 @@ data:
   # Service adı onun karşılığı).
   SITE_REVALIDATE_URL: "http://vodafonepaycomtr:3000/api/revalidate"
 
+  # 18.09.2026 — optional, both unset on purpose (documented here so they're findable):
+  # - SITE_INTERNAL_URL: Kırık Linkler's scan asks the site at SITE_REVALIDATE_URL's
+  #   origin (above). Only needed if the site's in-cluster address differs from that.
+  # - SCHEDULED_PUBLISH_DISABLED: "true" switches off the scheduled campaign publisher
+  #   in this pod. It runs in every pod; a Postgres advisory lock lets one act per tick.
+  # SITE_INTERNAL_URL: "http://vodafonepaycomtr:3000"
+  # SCHEDULED_PUBLISH_DISABLED: "false"
+
   # ---- MinIO (namespace içinde, geçici — k8s/minio.yaml) -------------------
   # S3: kurumsal bir S3/MinIO yerine, netleşene kadar kendi MinIO'muzu bu
   # namespace'e deploy ediyoruz (S3/S4 kararı). S3_ENDPOINT Service adıyla

@@ -1,3 +1,5 @@
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import type { Endpoint, Payload } from "payload";
 import { extractLinks, readableField, type FoundLink } from "@/lib/linkScan";
 
@@ -17,6 +19,8 @@ import { extractLinks, readableField, type FoundLink } from "@/lib/linkScan";
 
 type Source = { collection: string; titleField: string; drafts: boolean };
 
+const SCAN_PAGE_SIZE = 500;
+
 const SOURCES: Source[] = [
   { collection: "nav-links", titleField: "label", drafts: true },
   { collection: "campaigns", titleField: "title", drafts: true },
@@ -32,7 +36,7 @@ const GLOBAL_SOURCES = [
 ];
 
 export type LinkSourceRef = { collection: string; id?: string; global?: string; title: string; field: string; adminUrl: string };
-export type BrokenReason = "not-found" | "server-error" | "unreachable" | "unpublished" | "deleted" | "relative";
+export type BrokenReason = "not-found" | "server-error" | "unreachable" | "private-address" | "unpublished" | "deleted" | "relative";
 export type BrokenLink = { target: string; type: FoundLink["kind"]; status?: number; reason: BrokenReason; sources: LinkSourceRef[] };
 export type ScanResult = {
   checkedAt: string;
@@ -62,6 +66,69 @@ function publicSiteHosts(): string[] {
 }
 
 type Checked = { ok: boolean; status?: number; reason?: BrokenReason };
+
+/**
+ * 18.09.2026 review — SSRF guard for the optional external check. The URLs
+ * come from CMS content, which every editor role can write, and the fetch
+ * runs from inside the cluster (the CMS NetworkPolicy's egress is still `{}`,
+ * see k8s/networkpolicy.yaml). Without this, putting
+ * `http://169.254.169.254/…`, `http://10.x.x.x:5432` or a Service name in a
+ * link and pressing "Taramayı başlat" made the CMS pod probe that address and
+ * report back whether it answered — a port scanner for the internal network.
+ * Addresses that resolve to loopback, private, link-local, CGNAT, ULA,
+ * multicast or reserved ranges are not fetched; they are reported as
+ * "private-address", which is also true from a visitor's point of view: a
+ * public page cannot usefully link there. (The site's own internal address is
+ * a different path — internal links are asked of SITE_INTERNAL_URL, which is
+ * configuration, not content.) Resolve-then-fetch leaves a DNS-rebinding
+ * window; closing it fully needs a pinned-IP dispatcher, noted in tasks.md.
+ */
+export function isPrivateAddress(ip: string): boolean {
+  const v4 = ip.startsWith("::ffff:") ? ip.slice(7) : ip;
+  if (isIP(v4) === 4) {
+    const [a, b] = v4.split(".").map(Number);
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 192 && b === 0) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224
+    );
+  }
+  if (isIP(ip) === 6) {
+    const x = ip.toLowerCase();
+    return x === "::" || x === "::1" || /^f[cd]/.test(x) || /^fe[89ab]/.test(x) || x.startsWith("ff") || x.startsWith("64:ff9b:");
+  }
+  return true; // not an address at all: refuse rather than guess
+}
+
+type Resolver = (host: string) => Promise<string[]>;
+const resolveAll: Resolver = async (host) => (await lookup(host, { all: true, verbatim: true })).map((r) => r.address);
+
+/** True when every address the URL's host resolves to is public. */
+export async function isPublicHttpTarget(url: string, resolve: Resolver = resolveAll): Promise<boolean> {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+  const host = u.hostname.replace(/^\[|\]$/g, "");
+  if (!host || host === "localhost" || host.endsWith(".localhost")) return false;
+  if (isIP(host)) return !isPrivateAddress(host);
+  try {
+    const addresses = await resolve(host);
+    return addresses.length > 0 && addresses.every((a) => !isPrivateAddress(a));
+  } catch {
+    return false;
+  }
+}
 
 async function checkUrl(url: string, fetchImpl: typeof fetch, timeoutMs: number): Promise<Checked> {
   try {
@@ -97,7 +164,7 @@ async function pool<T, R>(items: T[], size: number, fn: (item: T) => Promise<R>)
 
 export async function scanBrokenLinks(
   payload: Payload,
-  options: { external?: boolean; locale?: "tr" | "en"; fetchImpl?: typeof fetch; timeoutMs?: number } = {}
+  options: { external?: boolean; locale?: "tr" | "en"; fetchImpl?: typeof fetch; timeoutMs?: number; resolve?: Resolver } = {}
 ): Promise<ScanResult> {
   const locale = options.locale ?? "tr";
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -117,15 +184,24 @@ export async function scanBrokenLinks(
 
   let total = 0;
   for (const src of SOURCES) {
-    const { docs } = await payload.find({
-      collection: src.collection as never,
-      depth: 0,
-      limit: 2000,
-      pagination: false,
-      overrideAccess: true,
-      ...(src.drafts ? { where: { _status: { equals: "published" } } } : {}),
-    });
-    for (const doc of docs as unknown as Record<string, unknown>[]) {
+    // Paged rather than one `limit: 2000` read: past 2000 records a
+    // collection's tail used to be skipped silently (with `pagination: false`
+    // Payload still applies the limit) and the report said "no broken links".
+    const docs: Record<string, unknown>[] = [];
+    for (let page = 1; ; page++) {
+      const res = await payload.find({
+        collection: src.collection as never,
+        depth: 0,
+        limit: SCAN_PAGE_SIZE,
+        page,
+        sort: "id",
+        overrideAccess: true,
+        ...(src.drafts ? { where: { _status: { equals: "published" } } } : {}),
+      });
+      docs.push(...(res.docs as unknown as Record<string, unknown>[]));
+      if (!res.hasNextPage) break;
+    }
+    for (const doc of docs) {
       const links = extractLinks(doc, extraHosts);
       total += links.length;
       const title = String(doc[src.titleField] ?? doc.id);
@@ -159,7 +235,11 @@ export async function scanBrokenLinks(
   });
 
   if (options.external) {
-    const externalResults = await pool(external, 6, (e) => checkUrl((e.link as Extract<FoundLink, { kind: "external" }>).url, fetchImpl, timeoutMs));
+    const externalResults = await pool(external, 6, async (e): Promise<Checked> => {
+      const url = (e.link as Extract<FoundLink, { kind: "external" }>).url;
+      if (!(await isPublicHttpTarget(url, options.resolve))) return { ok: false, reason: "private-address" };
+      return checkUrl(url, fetchImpl, timeoutMs);
+    });
     external.forEach((e, i) => {
       const r = externalResults[i];
       if (!r.ok) broken.push({ target: (e.link as Extract<FoundLink, { kind: "external" }>).url, type: "external", status: r.status, reason: r.reason!, sources: e.sources });
@@ -193,6 +273,8 @@ export async function scanBrokenLinks(
   };
 }
 
+let scanRunning = false;
+
 export const brokenLinksScanEndpoint: Endpoint = {
   path: "/broken-links/scan",
   method: "get",
@@ -200,8 +282,21 @@ export const brokenLinksScanEndpoint: Endpoint = {
     if (!req.user?.id) {
       return Response.json({ errors: [{ message: req.i18n?.language === "en" ? "You must be logged in." : "Giriş yapmalısınız." }] }, { status: 401 });
     }
+    // One scan at a time per pod: a scan fires a request at the site for every
+    // distinct address, and several editors (or a double click) would multiply that.
+    if (scanRunning) {
+      return Response.json(
+        { errors: [{ message: req.i18n?.language === "en" ? "A scan is already running. Try again in a moment." : "Şu anda bir tarama sürüyor. Birazdan tekrar deneyin." }] },
+        { status: 429 }
+      );
+    }
     const external = new URL(req.url ?? "http://x").searchParams.get("external") === "1";
-    const result = await scanBrokenLinks(req.payload, { external, locale: req.i18n?.language === "en" ? "en" : "tr" });
-    return Response.json(result);
+    scanRunning = true;
+    try {
+      const result = await scanBrokenLinks(req.payload, { external, locale: req.i18n?.language === "en" ? "en" : "tr" });
+      return Response.json(result);
+    } finally {
+      scanRunning = false;
+    }
   },
 };

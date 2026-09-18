@@ -111,6 +111,11 @@ export const TRANSLATION_DEFAULTS: Record<string, { tr: string; en: string }> = 
   "roleAwarePublishButton.scheduleConfirm": { tr: "Onayla — {date} için planla", en: "Approve — schedule for {date}" },
   "roleAwarePublishButton.scheduling": { tr: "Kaydediliyor…", en: "Saving…" },
   "roleAwarePublishButton.scheduledNotice": { tr: "Planlandı: {date} (İstanbul) yayına girecek", en: "Scheduled: goes live {date} (Istanbul)" },
+  // 18.09.2026 review: the plan's time has passed but the scheduler couldn't publish (reason is in the audit log).
+  "roleAwarePublishButton.scheduleOverdue": {
+    tr: "Yayınlanamadı: {date} planı geçti — nedeni Denetim Kayıtları'nda",
+    en: "Not published: the {date} plan has passed — see Audit Logs",
+  },
   "roleAwarePublishButton.cancelSchedule": { tr: "Planı İptal Et", en: "Cancel Schedule" },
   "roleAwarePublishButton.cancellingSchedule": { tr: "İptal ediliyor…", en: "Cancelling…" },
   "roleAwarePublishButton.awaitingScheduled": { tr: "Onay bekliyor — {date} (İstanbul) için planlandı", en: "Awaiting approval — planned for {date} (Istanbul)" },

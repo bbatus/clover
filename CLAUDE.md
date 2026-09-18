@@ -61,5 +61,6 @@ Kullanıcı: "bu sessionda henüz deploy etmicem, geliştirmeler devam edecek." 
    - Site Yapısı → Kırık Linkler → "Taramayı başlat" çalışıyor. Sitede olmayan bir adres açılınca birkaç saniye içinde "404 alan adresler" listesine düşüyor. Tarama siteye SITE_REVALIDATE_URL'nin origin'inden (küme içi `http://vodafonepaycomtr:3000`) gidiyor; farklıysa `SITE_INTERNAL_URL` tanımlanabilir.
    - Önizleme linki için iki pod'da da `PREVIEW_SECRET` aynı olmalı (zaten öyle), ve Clover'ın `SITE_URL`'i sitenin dışarıdan açılan adresi olmalı; link bu adresle üretilir.
    - Toplu işlemler: bir liste ekranında (ör. Blog Yazıları) birkaç satır seçince tablonun üstünde "N kayıt seçildi" çubuğu çıkıyor; Denetim Kayıtları'nda işlem türü "Toplu işlem" olan satır görünüyor.
+   - 18.09.2026 gözden geçirme (#64): şema değişikliği YOK, migration dosyası aynı. Zamanlanmış yayın yayınlayamazsa (ör. onaydan sonra silinen kategori) artık 30 sn'de bir sonsuza dek denemiyor: bekleme süresi 1 saate kadar katlanıyor, ilk hata Denetim Kayıtları'na "zamanlanmış yayını BAŞARISIZ" diye düşüyor, kampanya ekranında turuncu "Yayınlanamadı" notu çıkıyor. Kırık Linkler'in dış link kontrolü iç ağ adreslerine (10.x, 172.16–31.x, 169.254.x, localhost, Service adları) istek atmıyor; yine de `k8s/networkpolicy.yaml` egress'i hâlâ `{}` — ağ ekibiyle daraltılmalı.
 
-Detaylar: `tasks.md` #58, #59 ve #63.
+Detaylar: `tasks.md` #58, #59, #63 ve #64.
