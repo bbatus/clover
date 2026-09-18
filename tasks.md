@@ -2375,3 +2375,48 @@ menüsünden 3 ürün düşer.
   - Ekran görüntüsü alındı.
 - Testler 636/636 (7 yeni), tsc 0 hata.
 - **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` dosyasına 14. bölüm eklendi. İçerik: `not_found_hits` tablosu, `payload_locked_documents_rels.not_found_hits_id`. Tekrar çalıştırılabilir. Zincir boş DB'ye yüklendi, şema dev DB ile birebir aynı (12.433 satır). CLAUDE.md'deki bekleyen deploy adımları güncellendi.
+
+## 63. Toplu işlemler (18.09.2026)
+
+- Product ekibine önerilen 4 geliştirmenin 4.sü (liste CLAUDE.md'de). 14 taslaklı koleksiyonun (kampanyalar, blog, sayfalar, SSS, duyurular, ücret/limit tabloları, menü linkleri, hukuki sayfalar, çerez satırları, sayfa meta, kategoriler, temsilciler, dokümanlar) liste ekranında satır seçilince tablonun üstünde "N kayıt seçildi" çubuğu çıkıyor.
+- **Önce durum incelendi (Payload 3.88):**
+  - Payload'ın kendi seçim çubuğu (`ListSelection`) Düzenle / Yayınla / Yayından Kaldır / Sil butonlarını yalnızca koleksiyon erişimine bakarak gösteriyordu (`PublishMany_v4` sadece `permissions.update`'e bakıyor).
+  - Sonuç: Growth Maker her listede toplu "Yayınla" görüyordu; her kayıt `denyMakerPublish`'ten 403 alırdı. Growth Maker toplu "Sil"i de her seçim için görüyordu, oysa silme erişimi yalnızca kendi taslaklarını kapsayan bir `where`. Sonuç her durumda tek bir genel toast'tı, hangi kaydın neden kaldığı görünmüyordu.
+  - "Düzenle" çekmecesinin içinde de rol bilmeyen bir "Değişiklikleri yayınla" butonu var.
+- **Karar:** 14 koleksiyonda `disableBulkEdit` + `disableBulkDelete: true`; yerine `admin.components.beforeListTable` → `BulkActionsBar` (importMap'e elle eklendi) ve kendi uç noktamız `POST /api/bulk-actions`.
+  - Bu iki bayrak API tarafını da kapatıyor: `PATCH/DELETE /api/{koleksiyon}?where=…` artık overrideAccess olmayan her çağrıya 403 "has disabled bulk edit/delete" dönüyor. Kodda where ile toplu yazan bir yer yoktu (grep ile kontrol edildi; hepsi id ile). Yani bu koleksiyonlarda çoklu kayıt yazmanın tek yolu artık yeni uç nokta.
+  - Payload'ın toplu "Düzenle"si bu koleksiyonlarda kaldırıldı: where ile PATCH kullandığı için zaten çalışmaz hale geldi, ve çekmecesindeki yayınla butonu rol bilmiyor. Alan alan toplu düzenleme maker→checker akışının parçası değildi.
+- **Kim ne görüyor** (`bulkActionsFor`, `src/lib/bulkActionRules.ts`; sunucu ve istemci aynı fonksiyonu kullanıyor):
+  - NV Maker: Seçilenleri yayınla, Seçilenleri yayından kaldır, Seçili taslakları sil.
+  - NV Checker ve Growth Checker: Yayınla, Yayından kaldır. Silme yok.
+  - Growth Maker: yayınla / yayından kaldır YOK. Kampanyalarda "Yayından kaldırma talebi oluştur" (tek kampanyadaki talep butonunun toplu hali) ve kendi taslakları için "Seçili taslakları sil". Diğer koleksiyonlarda sadece silme. Aktif checker vekili ise "Yayınla" da görür (sunucu vekile izin veriyor), yayından kaldırmayı yine görmez (sunucu vekile de izin vermiyor).
+- **Sunucu (`src/lib/bulkActions.ts`):**
+  - Kayıtlar tek tek, Local API ile, gerçek kullanıcı olarak, `overrideAccess: false` ve `overrideLock: false` ile işleniyor. Her kayıt kendi istek nesnesiyle, yani kendi transaction'ıyla: biri hata verirse diğerleri geri alınmıyor. Sıra hook'ları (assignFooterOrder vb.) oku-yaz yaptığı için paralel değil sırayla.
+  - Hiçbir kural yeniden yazılmadı: denyMakerPublish, denyMakerEditPublished, guardPublishedEdit, manageCampaignSchedule, blockDeleteIfReferenced aynen çalışıyor. Ön kontrol (`precheckBulkItem`) sadece atlama ekler, izin eklemez:
+    - Yayınla: zaten yayında ve bekleyen değişikliği yoksa atlanır. Yayındaki kaydın onay bekleyen düzenlemesi varsa yayınlanır (Checker onayı). Kampanyada `reviewStatus = scheduled` (planlı) ise atlanır: toplu tık onaylı planı sessizce ezmesin; neden metninde plan zamanı İstanbul saatiyle yazıyor. Reddedilmiş kampanya atlanır.
+    - Yayından kaldır: yayında değilse atlanır. Kampanyada talep varsa guardPublishedEdit talebi temizliyor (tek kayıtla aynı).
+    - Talep: sadece kampanya; yayında değilse, zaten talep varsa ya da onay bekleyen düzenlemesi varsa (talep kaydı o düzenlemeyi de taşırdı) atlanır.
+    - Taslak sil: yayındaki kayıt asla toplu silinmez; Growth Maker yalnızca kendi oluşturduğu taslağı.
+  - Tek istekte en fazla 100 kayıt. "Tüm (N)'i seçin" kullanılınca çubuk kimlikleri listenin o anki filtresi ve aramasıyla çekiyor.
+  - Hata metni sunucunun kendi mesajı (Türkçe): ör. "Lütfen geçersiz alanları düzeltin: Kapak Görseli, Kategori, İçerik", "Bu işlemi gerçekleştirmek için izniniz yok.", kilitli kayıt, bulunamadı.
+- **Denetim kaydı:**
+  - Her kayıt normal hook'lardan kendi satırını yazıyor (publish / update / delete).
+  - İşlemin tamamı için yeni işlem türü **"Toplu işlem" (`bulk`)** ile tek özet satırı: "blog-posts: toplu yayınlama — 4 kayıt: 2 başarılı, 1 atlandı, 1 başarısız". "Değişiklikler" alanında her kayıt: kimlik ve başlık, önceki durum (taslak / yayında / onay bekleyen değişiklik var), sonuç ve nedeni.
+  - Reddedilen (403) kayıt ayrıca `denied` satırı yazıyor; Local API hatası REST'e özel `auditForbiddenAttempt`'e düşmediği için.
+  - CEF dışa aktarımına `bulk` → "Bulk Action" (önem 3) eklendi.
+- **Arayüz (`src/components/BulkActionsBar.tsx`, tr/en `useAdminLocale`, stiller custom.css `.bulk-*`):** onay penceresi (kampanyada "planlanmış ve reddedilmiş kampanyalar atlanır", Growth Maker silmede "yalnızca kendi taslaklarınız" notu), ardından Kapat'a kadar kalan sonuç tablosu: kayıt (kayda link), Başarılı / Atlandı / Başarısız, açıklama. Seçim temizlenir, tablo sunucudan yenilenir.
+- **Doğrulama (dev sunucu, headless Chrome 1440px, rol yerel DB'de değiştirilerek):**
+  - NV Maker, kampanyalar, 4 satır: yayınla / yayından kaldır / taslak sil.
+  - NV Checker, kampanyalar: 2 taslak + planlı taslak + yayındaki kampanya → 2 başarılı, planlı "15.10.2026 12:00 (İstanbul) için planlanmış…" ile atlandı, yayındaki "Zaten yayında" ile atlandı.
+  - NV Checker, blog: 2 geçerli taslak + zorunlu alanları boş taslak + yayındaki yazı → 2 başarılı, eksik taslak "Lütfen geçersiz alanları düzeltin: Kapak Görseli, Kategori, İçerik" ile başarısız, yayındaki atlandı.
+  - Growth Maker, kampanyalar: sadece "Yayından kaldırma talebi oluştur" + "Seçili taslakları sil". Blog: sadece silme. Toplu talep: 2 yayındaki kampanyaya talep düştü, taslak atlandı. Toplu silme: kendi taslağı silindi, yayındaki atlandı.
+  - Growth Maker doğrudan REST: `/api/bulk-actions` ile yayınla → kayıt 403 "Bu işlemi gerçekleştirmek için izniniz yok."; kampanya yayından kaldır → guardPublishedEdit'in mesajı; Payload'ın `PATCH ?where` toplu yayını → 403 "has disabled bulk edit"; `DELETE ?where` → 403; tek kayıt PATCH yayınla → 403.
+  - Growth Checker, kampanyalar: yayınla / yayından kaldır (silme yok). Toplu yayından kaldırma: 2 kampanya indi, açık talepleri temizlendi.
+  - Yayındaki blog yazısına onay bekleyen düzenleme kaydedilip toplu yayınlandı: yeni başlık canlıya geçti.
+  - "Tüm (20)'yi seçin": onay penceresi 20 kayıt dedi (vazgeçildi).
+  - `audit_logs` / `audit_logs_changes` satırları kontrol edildi.
+  - Ekran görüntüleri: seçim çubuğu (NV Maker, NV Checker, Growth Maker, Growth Checker), onay penceresi, kampanya ve blog sonuç tabloları, Growth Maker talep ve silme sonuçları.
+  - Test kayıtlarım (kampanya 28–30, blog 12–14) yeni özelliğin kendisiyle kaldırılıp silindi; dev kullanıcının rolü `new_vertical_maker`'a döndü.
+- Testler 662/662 (26 yeni: kural tablosu, uç nokta, bileşen), tsc 0 hata, eslint 0 hata.
+- **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` dosyasına 15. bölüm eklendi: `ALTER TYPE enum_audit_logs_action ADD VALUE IF NOT EXISTS 'bulk'` (enum'un sonuna; dev push'la aynı sıra). Veri değişikliği yok, tekrar çalıştırılabilir. Zincir boş DB'ye yüklendi (ve dosya ikinci kez çalıştırıldı), `pg_dump --schema-only` dev DB ile birebir aynı (12.434 satır). CLAUDE.md'deki bekleyen deploy adımları ve kontrol sorgusu güncellendi.
+- ⚠️ **Deploy öncesi:** bu dosya canlıda çalıştırılmadan yeni imaj çıkarsa toplu işlemin özet denetim satırı yazılamaz (best-effort; işlemin kendisi yine çalışır ama iz kaybolur). Dosyanın tamamı zaten bekleyen deploy adımlarında.

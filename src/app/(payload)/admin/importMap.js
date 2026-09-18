@@ -5,6 +5,7 @@ import { default as default_9f7277268298b6ce80e94743d0fb549c } from '../../../co
 import { default as default_614978b468891fb68d4bbfb018c4ee7c } from '../../../components/LockedAccountsBanner'
 import { default as default_37869c6409e9816ad65d302e710a3b19 } from '../../../components/MediaUsageField'
 import { default as default_ca537167cee3576c403f65f4de19390e } from '../../../components/MediaFilterTabs'
+import { default as default_7c9d0b51cf842896ba740a42e5b17c2c } from '../../../components/BulkActionsBar'
 import { default as default_71978ce1f37f3c32f9fc8c66abf19ced } from '../../../components/MakerAwarePublishButton'
 import { default as default_cb4c1b7ebb500fe4e8c64c3b984929e8 } from '../../../components/SaveOrSubmitButton'
 import { default as default_88dbf16521a58f527213ef1451264fd9 } from '../../../components/HideMenuUnpublishButton'
@@ -36,6 +37,8 @@ import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { HeadingFeatureClient as HeadingFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ParagraphFeatureClient as ParagraphFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { default as default_dc14572cc8fc756bc64dea6395d1e55d } from '../../../components/SeoAssistant'
+import { default as default_9f60e5d23bfea9ddc0d7e935667d3b8c } from '../../../components/SharePreviewPanel'
 import { default as default_711bc278b156b086d4259b6330cee300 } from '../../../components/FooterOrderField'
 import { default as default_be85d66e6e8081b44bdd02f21d196473 } from '../../../components/CampaignsExportButton'
 import { default as default_ac1bfc79f9c031f2e7cc5c94a1ec554f } from '../../../components/RoleAwarePublishButton'
@@ -45,9 +48,6 @@ import { default as default_130ecbd76bd70cd9a95997b236b69841 } from '../../../co
 import { default as default_45d1ba887b94be4718c6285f137f8a54 } from '../../../components/BlockFieldAutoResolve'
 import { default as default_7fb370ae11a27d414a37ef953f1ef426 } from '../../../components/BlogPostsExportButton'
 import { default as default_5aae2a5a347f869cb905621b589d4c4b } from '../../../components/FooterSyncPanel'
-import { default as default_seo_assistant_7f3c } from '../../../components/SeoAssistant'
-import { default as default_share_preview_panel_2b91 } from '../../../components/SharePreviewPanel'
-import { default as default_broken_links_view_5d20 } from '../../../components/BrokenLinksView'
 import { default as default_1b8b1ea81afc982cb43ddf312304f6a3 } from '../../../components/UserAvatarIcon'
 import { default as default_e30df20e416e78fe7950694ff579c893 } from '../../../components/AdminIcon'
 import { default as default_48bd4f5ed20a278ca9298ebbc521db88 } from '../../../components/AdminLogo'
@@ -64,6 +64,7 @@ import { default as default_1a7db97af8312587db9bbf9f5b011f70 } from '../../../co
 import { default as default_9f6318b63a1fc302c87a554b796c366f } from '../../../components/AccessMatrixView'
 import { default as default_ad97d362163f2df4de5bd57b0f3a8acd } from '../../../components/GuideView'
 import { default as default_ab9812c481b9febb07935d2a764b6f33 } from '../../../components/FeedbackView'
+import { default as default_b63228c34cb947792ae283115518e4f2 } from '../../../components/BrokenLinksView'
 import { default as default_3a97e41af32c370a5372919b8477924d } from '../../../components/ForgotPasswordDisabled'
 import { default as default_6708b500e5341faa9165b3d848707d81 } from '../../../components/CustomAccountView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
@@ -77,6 +78,7 @@ export const importMap = {
   "/components/LockedAccountsBanner#default": default_614978b468891fb68d4bbfb018c4ee7c,
   "/components/MediaUsageField#default": default_37869c6409e9816ad65d302e710a3b19,
   "/components/MediaFilterTabs#default": default_ca537167cee3576c403f65f4de19390e,
+  "/components/BulkActionsBar#default": default_7c9d0b51cf842896ba740a42e5b17c2c,
   "/components/MakerAwarePublishButton#default": default_71978ce1f37f3c32f9fc8c66abf19ced,
   "/components/SaveOrSubmitButton#default": default_cb4c1b7ebb500fe4e8c64c3b984929e8,
   "/components/HideMenuUnpublishButton#default": default_88dbf16521a58f527213ef1451264fd9,
@@ -108,6 +110,8 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#HeadingFeatureClient": HeadingFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ParagraphFeatureClient": ParagraphFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "/components/SeoAssistant#default": default_dc14572cc8fc756bc64dea6395d1e55d,
+  "/components/SharePreviewPanel#default": default_9f60e5d23bfea9ddc0d7e935667d3b8c,
   "/components/FooterOrderField#default": default_711bc278b156b086d4259b6330cee300,
   "/components/CampaignsExportButton#default": default_be85d66e6e8081b44bdd02f21d196473,
   "/components/RoleAwarePublishButton#default": default_ac1bfc79f9c031f2e7cc5c94a1ec554f,
@@ -117,9 +121,6 @@ export const importMap = {
   "/components/BlockFieldAutoResolve#default": default_45d1ba887b94be4718c6285f137f8a54,
   "/components/BlogPostsExportButton#default": default_7fb370ae11a27d414a37ef953f1ef426,
   "/components/FooterSyncPanel#default": default_5aae2a5a347f869cb905621b589d4c4b,
-  "/components/SeoAssistant#default": default_seo_assistant_7f3c,
-  "/components/SharePreviewPanel#default": default_share_preview_panel_2b91,
-  "/components/BrokenLinksView#default": default_broken_links_view_5d20,
   "/components/UserAvatarIcon#default": default_1b8b1ea81afc982cb43ddf312304f6a3,
   "/components/AdminIcon#default": default_e30df20e416e78fe7950694ff579c893,
   "/components/AdminLogo#default": default_48bd4f5ed20a278ca9298ebbc521db88,
@@ -136,6 +137,7 @@ export const importMap = {
   "/components/AccessMatrixView#default": default_9f6318b63a1fc302c87a554b796c366f,
   "/components/GuideView#default": default_ad97d362163f2df4de5bd57b0f3a8acd,
   "/components/FeedbackView#default": default_ab9812c481b9febb07935d2a764b6f33,
+  "/components/BrokenLinksView#default": default_b63228c34cb947792ae283115518e4f2,
   "/components/ForgotPasswordDisabled#default": default_3a97e41af32c370a5372919b8477924d,
   "/components/CustomAccountView#default": default_6708b500e5341faa9165b3d848707d81,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1

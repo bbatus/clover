@@ -5,6 +5,7 @@ import { revalidateTag, revalidateTagOnDelete } from "@/hooks/revalidate";
 import { auditAfterChange, auditAfterDelete } from "@/hooks/audit";
 import { setOwnerOnCreate } from "@/hooks/ownership";
 import { dbLabel } from "@/lib/collectionLabels";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 export const Representatives: CollectionConfig = {
   slug: "representatives",
@@ -12,6 +13,11 @@ export const Representatives: CollectionConfig = {
     singular: dbLabel("collectionLabel.representatives.singular", { tr: "Temsilci", en: "Representative" }),
     plural: dbLabel("collectionLabel.representatives.plural", { tr: "Temsilciler", en: "Representatives" }),
   },
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "businessName",
@@ -25,6 +31,7 @@ export const Representatives: CollectionConfig = {
       en: "Representative/dealer records — the /temsilciliklerimiz search form and the /temsilci/[id] detail page use this data.",
     },
     components: {
+      beforeListTable: [bulkActionsBar("representatives")],
       edit: {
         PublishButton: "/components/MakerAwarePublishButton#default",
         // Payload offers Unpublish only inside the ⋮ menu, which never renders

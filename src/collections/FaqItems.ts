@@ -7,6 +7,7 @@ import { setOwnerOnCreate } from "@/hooks/ownership";
 import { dbLabel } from "@/lib/collectionLabels";
 import { assignNextOrder, orderField } from "@/hooks/ordering";
 import { CATEGORY_SCOPES } from "@/collections/Categories";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 export const FaqItems: CollectionConfig = {
   slug: "faq-items",
@@ -21,12 +22,18 @@ export const FaqItems: CollectionConfig = {
   // after creating it. Admin list now shows newest-first; the site's own
   // visitor-facing order is untouched — see `order`'s own field comment.
   defaultSort: "-createdAt",
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "question",
     defaultColumns: ["question", "category", "order", "createdAt", "_status"],
     group: { tr: "İçerik Yönetimi", en: "Content Management" },
     components: {
+      beforeListTable: [bulkActionsBar("faq-items")],
       edit: {
         PublishButton: "/components/MakerAwarePublishButton#default",
         // Payload offers Unpublish only inside the ⋮ menu, which never renders

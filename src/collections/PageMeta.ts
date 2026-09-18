@@ -6,6 +6,7 @@ import { auditAfterChange, auditAfterDelete } from "@/hooks/audit";
 import { setOwnerOnCreate } from "@/hooks/ownership";
 import { dbLabel } from "@/lib/collectionLabels";
 import { seoKeywordsField } from "@/lib/seoFields";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 /**
  * RFP §3.2.3/§3.2.4/§3.2.6: breadcrumb text and SEO meta (title/description/
@@ -19,6 +20,11 @@ export const PageMeta: CollectionConfig = {
     singular: dbLabel("collectionLabel.page-meta.singular", { tr: "Sayfa Meta Bilgisi", en: "Page Meta" }),
     plural: dbLabel("collectionLabel.page-meta.plural", { tr: "Sayfa Meta Bilgileri", en: "Page Metas" }),
   },
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "pageKey",
@@ -32,6 +38,7 @@ export const PageMeta: CollectionConfig = {
       en: "Per-page breadcrumb text and SEO fields. pageKey must exactly match the site's route (e.g.: /aninda-bakiye).",
     },
     components: {
+      beforeListTable: [bulkActionsBar("page-meta")],
       edit: {
         PublishButton: "/components/MakerAwarePublishButton#default",
         // Payload offers Unpublish only inside the ⋮ menu, which never renders

@@ -103,6 +103,13 @@ export const AuditLogs: CollectionConfig = {
         // (auditForbiddenAttempt, hooks/audit.ts) — one hook covers every
         // collection instead of wiring this into each one individually.
         { label: { tr: "Yetkisiz işlem denemesi engellendi", en: "Unauthorized attempt blocked" }, value: "denied" },
+        // 18.09.2026 — one summary row per bulk action (lib/bulkActions.ts),
+        // alongside the normal per-record publish/update/delete rows the
+        // collection hooks still write. `changes` lists every selected record
+        // with its state before and its outcome (başarılı / atlandı / başarısız
+        // + the server's reason). Kept LAST so the Postgres enum value appended
+        // by the migration (§15) lands in the same position as Payload's push.
+        { label: { tr: "Toplu işlem", en: "Bulk action" }, value: "bulk" },
       ],
     },
     { name: "collectionSlug", type: "text", label: { tr: "Koleksiyon", en: "Collection" } },

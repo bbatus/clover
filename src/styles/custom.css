@@ -2831,3 +2831,52 @@ html[data-theme="dark"] .blk-reason--unreachable, html[data-theme="dark"] .blk-r
 .blk-num { font-variant-numeric: tabular-nums; text-align: right; }
 .blk-ignored { opacity: 0.55; }
 .blk-table .btn { margin: 0; }
+
+/* ---------------------------------------------------------------------
+   Toplu işlemler — BulkActionsBar.tsx (18.09.2026)
+   Status colours are explicit, same reason as .seoa above.
+--------------------------------------------------------------------- */
+.bulk {
+  --bulk-ok: #1f7a45; --bulk-ok-bg: #e8f5ed;
+  --bulk-skip: #7a4a00; --bulk-skip-bg: #fdf1e2;
+  --bulk-fail: #b3261e; --bulk-fail-bg: #fbe9e7;
+  display: flex; flex-direction: column; gap: 0.75rem; margin: 0 0 1rem;
+}
+html[data-theme="dark"] .bulk {
+  --bulk-ok: #8fd9ab; --bulk-ok-bg: #16301f;
+  --bulk-skip: #f2c56b; --bulk-skip-bg: #3a2e15;
+  --bulk-fail: #f08a7e; --bulk-fail-bg: #3b1d1a;
+}
+.bulk-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;
+  padding: 0.6rem 0.9rem; border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m); background: var(--theme-elevation-50);
+}
+.bulk-count { font-weight: 600; font-size: 0.875rem; margin-right: auto; }
+.bulk-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.bulk-buttons .btn { margin: 0; }
+.bulk-link { background: none; border: 0; padding: 0; color: var(--theme-text); text-decoration: underline; cursor: pointer; font-size: 0.85rem; }
+.bulk-error {
+  display: flex; justify-content: space-between; gap: 1rem; align-items: center;
+  padding: 0.6rem 0.9rem; border-radius: var(--style-radius-s);
+  background: var(--bulk-fail-bg); color: var(--bulk-fail); font-size: 0.875rem;
+}
+.bulk-result { border: 1px solid var(--theme-elevation-150); border-radius: var(--style-radius-m); padding: 0.9rem 1rem; background: var(--theme-elevation-0); }
+.bulk-result-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.6rem; }
+.bulk-result-head strong { font-size: 0.95rem; }
+.bulk-result-counts { display: block; font-size: 0.82rem; color: var(--theme-elevation-600); margin-top: 0.15rem; }
+.bulk-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.bulk-table th { text-align: left; font-weight: 600; color: var(--theme-elevation-600); padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--theme-elevation-150); }
+.bulk-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--theme-elevation-100); vertical-align: top; }
+.bulk-table tr:last-child td { border-bottom: 0; }
+.bulk-chip { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.bulk-chip--ok { color: var(--bulk-ok); background: var(--bulk-ok-bg); }
+.bulk-chip--skipped { color: var(--bulk-skip); background: var(--bulk-skip-bg); }
+.bulk-chip--failed { color: var(--bulk-fail); background: var(--bulk-fail-bg); }
+.bulk-reason { color: var(--theme-elevation-800); overflow-wrap: anywhere; }
+.bulk-confirm-body, .bulk-confirm-note { margin: 0; font-size: 0.9rem; line-height: 1.45; }
+.bulk-confirm-note { color: var(--theme-elevation-600); }
+@media (max-width: 640px) {
+  .bulk-count { width: 100%; }
+}
+.bulk-buttons .btn.bulk-danger { color: var(--bulk-fail); }

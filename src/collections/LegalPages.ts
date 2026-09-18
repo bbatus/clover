@@ -6,6 +6,7 @@ import { revalidateTag, revalidateTagOnDelete } from "@/hooks/revalidate";
 import { auditAfterChange, auditAfterDelete } from "@/hooks/audit";
 import { setOwnerOnCreate } from "@/hooks/ownership";
 import { dbLabel } from "@/lib/collectionLabels";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 type DocumentRow = { prefix?: string; label?: string; source?: string; slug?: string };
 type GroupRow = { documents?: DocumentRow[] };
@@ -64,6 +65,11 @@ export const LegalPages: CollectionConfig = {
     singular: dbLabel("collectionLabel.legal-pages.singular", { tr: "Hukuki Sayfa", en: "Legal Page" }),
     plural: dbLabel("collectionLabel.legal-pages.plural", { tr: "Hukuki Sayfalar", en: "Legal Pages" }),
   },
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "title",
@@ -77,6 +83,7 @@ export const LegalPages: CollectionConfig = {
       en: "Structural parts of these legal pages (tables/lists) stay fixed in code; what's managed here is intro text, plus the page image and document groups for Sözleşmeler ve Formlar.",
     },
     components: {
+      beforeListTable: [bulkActionsBar("legal-pages")],
       edit: {
         PublishButton: "/components/MakerAwarePublishButton#default",
         // Payload offers Unpublish only inside the ⋮ menu, which never renders

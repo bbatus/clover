@@ -11,6 +11,7 @@ import { turkishSlugify, uniqueSlug } from "@/lib/slugify";
 import { seoAssistantField, seoKeywordsField } from "@/lib/seoFields";
 import { sharePreviewField } from "@/lib/sharePreviewField";
 import { assignFooterOrder, FOOTER_ORDER_FIELD_DESCRIPTION, FOOTER_ORDER_MAX } from "@/hooks/ordering";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 /**
  * RFP follow-up: was a manually-typed, `unique: true` text field — an
@@ -40,6 +41,11 @@ export const BlogPosts: CollectionConfig = {
     singular: dbLabel("collectionLabel.blog-posts.singular", { tr: "Blog Yazısı", en: "Blog Post" }),
     plural: dbLabel("collectionLabel.blog-posts.plural", { tr: "Blog Yazıları", en: "Blog Posts" }),
   },
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "title",
@@ -47,6 +53,7 @@ export const BlogPosts: CollectionConfig = {
     group: { tr: "İçerik Yönetimi", en: "Content Management" },
     preview: (doc) => (typeof doc.slug === "string" ? sitePreviewUrl(`/blog/${doc.slug}`) : null),
     components: {
+      beforeListTable: [bulkActionsBar("blog-posts")],
       edit: {
         PublishButton: "/components/MakerAwarePublishButton#default",
         // Payload offers Unpublish only inside the ⋮ menu, which never renders

@@ -13,6 +13,7 @@ import { autoSlug } from "@/hooks/autoSlug";
 import { seoAssistantField, seoKeywordsField } from "@/lib/seoFields";
 import { sharePreviewField } from "@/lib/sharePreviewField";
 import { manageCampaignSchedule, SCHEDULE_TIME_ZONE } from "@/lib/campaignSchedule";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 /**
  * RFP feedback 3.11: a Growth Maker editing (resubmitting) a draft that was
@@ -214,6 +215,11 @@ export const Campaigns: CollectionConfig = {
   disableDuplicate: true,
   // RFP feedback: liste en son oluşturulan kampanya en üstte olacak şekilde sıralanmalı.
   defaultSort: "-createdAt",
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "title",
@@ -232,6 +238,7 @@ export const Campaigns: CollectionConfig = {
     // listing page — see kampanyalar/[slug]/kart-onizleme/page.tsx.
     preview: (doc) => (typeof doc.slug === "string" ? sitePreviewUrl(`/kampanyalar/${doc.slug}/kart-onizleme`) : null),
     components: {
+      beforeListTable: [bulkActionsBar("campaigns")],
       beforeList: [
         { path: "/components/HelpButton#default", clientProps: { collection: "campaigns" } },
         // RFP feedback 5.11: full-column CSV export, Turkish-Excel safe.

@@ -53,6 +53,7 @@ import { SeoFiles } from "./src/globals/SeoFiles";
 import { ShareLinks } from "./src/collections/ShareLinks";
 import { NotFoundHits } from "./src/collections/NotFoundHits";
 import { brokenLinksScanEndpoint } from "./src/lib/brokenLinks";
+import { bulkActionsEndpoint } from "./src/lib/bulkActions";
 import { startScheduledPublishing } from "./src/lib/campaignSchedule";
 import { ROLES } from "./src/access/roles";
 import { env } from "./src/env";
@@ -472,7 +473,8 @@ export default buildConfig({
   // endpoint is the extension point for that, unrelated to any one
   // collection's own CRUD lifecycle.
   // Health probes for OCP (liveness/readiness) — see healthEndpoints.ts.
-  endpoints: [auditExportEndpoint, livenessEndpoint, readinessEndpoint, brokenLinksScanEndpoint],
+  // Toplu işlemler (18.09.2026) — see lib/bulkActions.ts.
+  endpoints: [auditExportEndpoint, livenessEndpoint, readinessEndpoint, brokenLinksScanEndpoint, bulkActionsEndpoint],
   // RFP §7.2: logs every rejected (403) write attempt, across every
   // collection at once — see auditForbiddenAttempt's doc comment
   // (hooks/audit.ts) for why root-level is the right extension point here.

@@ -6,6 +6,7 @@ import { auditAfterChange, auditAfterDelete } from "@/hooks/audit";
 import { setOwnerOnCreate } from "@/hooks/ownership";
 import { dbLabel } from "@/lib/collectionLabels";
 import { assignNextOrder, orderField } from "@/hooks/ordering";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 type FeeRowSibling = { rowType?: string | null };
 
@@ -35,6 +36,11 @@ export const FeeRows: CollectionConfig = {
   // RFP feedback 5.5: the list must reflect the `order` field (and the
   // drag-to-reorder widget's saved sequence), not Payload's fallback order.
   defaultSort: "order",
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "label",
@@ -50,6 +56,7 @@ export const FeeRows: CollectionConfig = {
     // `useDocumentDrawer`, which defaults `overrideEntityVisibility: true`
     // and bypasses that exact check.
     components: {
+      beforeListTable: [bulkActionsBar("fee-rows")],
       edit: {
         PublishButton: "/components/MakerAwarePublishButton#default",
         // Payload offers Unpublish only inside the ⋮ menu, which never renders

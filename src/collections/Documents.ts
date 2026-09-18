@@ -6,6 +6,7 @@ import { blockDeleteIfReferenced } from "@/hooks/referentialIntegrity";
 import { dbLabel } from "@/lib/collectionLabels";
 import { normalizeUploadFilename } from "@/hooks/normalizeUploadFilename";
 import { setOwnerOnCreate } from "@/hooks/ownership";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 /**
  * Separate from Media (which is image-only, with imageSizes/focalPoint that
@@ -21,11 +22,17 @@ export const Documents: CollectionConfig = {
     singular: dbLabel("collectionLabel.documents.singular", { tr: "Doküman", en: "Document" }),
     plural: dbLabel("collectionLabel.documents.plural", { tr: "Dokümanlar", en: "Documents" }),
   },
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "filename",
     group: { tr: "Sistem", en: "System" },
     components: {
+      beforeListTable: [bulkActionsBar("documents")],
       edit: {
         PublishButton: "/components/MakerAwarePublishButton#default",
         // Payload offers Unpublish only inside the ⋮ menu, which never renders

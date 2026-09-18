@@ -22,6 +22,9 @@
 --   14. Kırık link raporu (18.09.2026) → YENİ tablo not_found_hits (sitede
 --       404 alan adresler; 4 index), payload_locked_documents_rels'e
 --       not_found_hits_id kolonu + index + FK. Veri değişikliği yok.
+--   15. Toplu işlemler (18.09.2026) → enum_audit_logs_action'a 'bulk' değeri
+--       (toplu yayınlama/yayından kaldırma/silme özet denetim kaydı). Veri
+--       değişikliği yok.
 --       Not: ALTER TYPE ... ADD VALUE PostgreSQL 12+ gerektirir (transaction
 --       içinde çalışır; yeni değer aynı transaction'da kullanılmıyor).
 --
@@ -248,5 +251,15 @@ BEGIN
             ADD CONSTRAINT payload_locked_documents_rels_not_found_hits_fk FOREIGN KEY (not_found_hits_id) REFERENCES public.not_found_hits(id) ON DELETE CASCADE;
     END IF;
 END $$;
+
+-- -----------------------------------------------------------------------
+-- 15. Toplu işlemler — denetim kaydında "Toplu işlem" türü (18.09.2026)
+--
+-- Liste ekranındaki toplu yayınlama / yayından kaldırma / taslak silme her
+-- kayıt için normal denetim satırlarını yazar; ek olarak işlemin tamamı için
+-- action = 'bulk' olan tek bir özet satırı yazılır. Değer enum'un sonuna
+-- eklenir (Payload'ın push'unun koyduğu sırayla aynı).
+-- -----------------------------------------------------------------------
+ALTER TYPE public.enum_audit_logs_action ADD VALUE IF NOT EXISTS 'bulk';
 
 COMMIT;

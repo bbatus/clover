@@ -12,6 +12,7 @@ import { turkishSlugify, uniqueSlug } from "@/lib/slugify";
 import { CATEGORY_SCOPES, type CategoryScope } from "@/collections/Categories";
 import { seoAssistantField, seoKeywordsField } from "@/lib/seoFields";
 import { sharePreviewField } from "@/lib/sharePreviewField";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 /**
  * RFP §3.3 (Lifecycle Management) / §3.2.13 (drag-and-drop web page design):
@@ -1562,6 +1563,11 @@ export const Pages: CollectionConfig = {
     singular: dbLabel("collectionLabel.pages.singular", { tr: "Sayfa", en: "Page" }),
     plural: dbLabel("collectionLabel.pages.plural", { tr: "Sayfalar", en: "Pages" }),
   },
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "title",
@@ -1577,6 +1583,7 @@ export const Pages: CollectionConfig = {
     },
     preview: (doc) => (typeof doc.slug === "string" ? sitePreviewUrl(`/${doc.slug}`) : null),
     components: {
+      beforeListTable: [bulkActionsBar("pages")],
       beforeList: [{ path: "/components/HelpButton#default", clientProps: { collection: "pages" } }],
       // RFP follow-up: an editor confused mid-way through building a page
       // (which block to use, how to connect it to the menu) was stuck on the

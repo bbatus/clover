@@ -59,6 +59,7 @@ const ACTION_NAMES: Record<string, string> = {
   role_changed: "User Role Changed",
   export: "Data Exported",
   denied: "Unauthorized Attempt Blocked",
+  bulk: "Bulk Action",
 };
 
 /**
@@ -78,6 +79,7 @@ const ACTION_SEVERITY: Record<string, number> = {
   create: 2,
   update: 2,
   export: 3,
+  bulk: 3,
   login: 1,
   logout: 1,
 };

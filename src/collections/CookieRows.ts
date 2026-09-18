@@ -5,6 +5,7 @@ import { revalidateTag, revalidateTagOnDelete } from "@/hooks/revalidate";
 import { auditAfterChange, auditAfterDelete } from "@/hooks/audit";
 import { setOwnerOnCreate } from "@/hooks/ownership";
 import { dbLabel } from "@/lib/collectionLabels";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 export const CookieRows: CollectionConfig = {
   slug: "cookie-rows",
@@ -12,6 +13,11 @@ export const CookieRows: CollectionConfig = {
     singular: dbLabel("collectionLabel.cookie-rows.singular", { tr: "Çerez Satırı", en: "Cookie Row" }),
     plural: dbLabel("collectionLabel.cookie-rows.plural", { tr: "Çerez Satırları", en: "Cookie Rows" }),
   },
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "name",
@@ -25,6 +31,7 @@ export const CookieRows: CollectionConfig = {
       en: "Rows of the cookie table on the /cerez-politikasi page.",
     },
     components: {
+      beforeListTable: [bulkActionsBar("cookie-rows")],
       edit: {
         PublishButton: "/components/MakerAwarePublishButton#default",
         // Payload offers Unpublish only inside the ⋮ menu, which never renders

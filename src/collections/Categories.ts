@@ -8,6 +8,7 @@ import { dbLabel } from "@/lib/collectionLabels";
 import { assignNextOrder, orderField } from "@/hooks/ordering";
 import { turkishSlugify, uniqueSlug } from "@/lib/slugify";
 import { setOwnerOnCreate } from "@/hooks/ownership";
+import { bulkActionsBar } from "@/lib/bulkActionRules";
 
 /**
  * E1: slug is now auto-generated from `label` — never typed by hand, so a
@@ -89,6 +90,11 @@ export const Categories: CollectionConfig = {
   // (generateSlug enforces this the same way on create) — see the `slug`
   // field comment for why a plain `unique: true` there would be wrong now.
   indexes: [{ fields: ["scope", "slug"], unique: true }],
+  // Toplu işlemler (18.09.2026): Payload's own bulk Edit/Publish/Unpublish/Delete
+  // only know collection access, not our maker→checker hooks — replaced by
+  // BulkActionsBar + /api/bulk-actions (lib/bulkActions.ts).
+  disableBulkEdit: true,
+  disableBulkDelete: true,
   admin: {
     hideAPIURL: true,
     useAsTitle: "label",
@@ -98,6 +104,7 @@ export const Categories: CollectionConfig = {
     defaultColumns: ["label", "scope", "slug", "order", "_status"],
     group: { tr: "İçerik Yönetimi", en: "Content Management" },
     components: {
+      beforeListTable: [bulkActionsBar("categories")],
       edit: {
         PublishButton: "/components/MakerAwarePublishButton#default",
         // Payload offers Unpublish only inside the ⋮ menu, which never renders
