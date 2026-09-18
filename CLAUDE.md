@@ -15,3 +15,37 @@ Kullanıcıyla konuşuldu, "daha sonranın konusu ama aklımızda tutalım". Bir
   - Sitede bunları uygulayan katman (Next `proxy`/middleware ya da catch-all) ve sitemap'ten yönlendirilen adreslerin çıkarılması.
   - Footer ve menüdeki kırık iç linklerin raporlanması.
 - **IndexNow:** Aynı listede. Hem vendor'da hem bizde yok. Yayın/silme sonrası CMS'in zaten yaptığı revalidate çağrısının yanına eklenebilir; anahtar dosyası sitede sunulur.
+
+## ⚠️ Bekleyen deploy adımları (canlı DB'de HENÜZ ÇALIŞTIRILMADI — 18.09.2026)
+
+Kullanıcı: "bu sessionda henüz deploy etmicem, geliştirmeler devam edecek." Canlıya çıkarken aşağıdakiler yapılmadan yeni imaj deploy edilmemeli, yoksa ilgili ekranlar "column does not exist" hatasıyla 500 döner. **Deploy'a kadar yapılan her yeni şema değişikliği AYNI dosyaya yeni bölüm olarak eklenmeli** ve bu liste güncellenmeli. Dosya canlıda çalıştırılınca bu bölüm "çalıştırıldı (tarih)" diye işaretlenir, sonraki değişiklikler yeni bir `clover-schema-migration-18-09-to-<tarih>.sql` dosyasında başlar.
+
+**Canlıda zaten çalıştırılmış olanlar** (tekrar çalıştırmayın): `clover-schema-migration-01-09-to-02-09-2026.sql`, `nav-links-products-menu-migration-16-09-2026.sql`, `clover-schema-migration-02-09-to-17-09-2026.sql`. Hepsi 17.09.2026'da çalıştırıldı. `nav-links` scripti taşıyamadığı "Yeni Menü Linki" test kaydını bıraktı; o kayıt elle silindi.
+
+**Çalıştırılacak tek dosya:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql`
+- §11 — SEO Dosyaları global'i: `seo_files` / `_seo_files_v` tabloları, robots.txt ve llms.txt başlangıç içeriği (VERİ).
+- §12 — Kampanya zamanlanmış yayını: `campaigns` / `_campaigns_v` kolonları, saat dilimi enum'ları, `review_status`'a `'scheduled'` değeri.
+- Tekrar çalıştırılabilir. PostgreSQL 12+ gerekir. Zincirle birlikte boş DB'de doğrulandı; şema dev DB ile birebir aynı.
+
+**Deploy sırası:**
+1. DB yedeği al.
+2. DBeaver ayarları: Window → Preferences → Editors → SQL Editor → SQL Processing → "Blank line is statement delimiter" = **Never**; araç çubuğunda commit modu **Auto**.
+3. Dosyayı **File → Open File** ile aç; metni kopyalayıp yapıştırma, çünkü hizalama boşlukları bölünmez boşluğa dönüşüp hata veriyor. Doğru bağlantıyı seçip **Alt+X** ile tamamını çalıştır.
+4. Kontrol:
+   ```sql
+   SELECT to_regclass('public.seo_files') AS seo, (SELECT count(*) FROM seo_files) AS seo_kaydi,
+          (SELECT count(*) FROM information_schema.columns WHERE table_name='campaigns' AND column_name='scheduled_publish_at') AS zamanlama;
+   ```
+   Beklenen: `seo_files | 1 | 1`.
+5. Configmap'leri uygula; ikisine de `TZ: "Europe/Istanbul"` eklendi. `clover/` ve `vodafonepaycomtr-site/` içinde ayrı ayrı `oc apply -f k8s/configmap.yaml`.
+6. Önce Clover'ı, sonra siteyi deploy et (`oc rollout status ...`).
+7. Site önbelleğini tazele. Build sırasında CMS'e ulaşılamazsa sayfalar eksik veriyle önbelleğe giriyor:
+   ```bash
+   oc exec deploy/vodafonepaycomtr -- sh -c 'for t in seo-files footer-settings blog-posts campaigns nav-links contact-info announcements faq-items pages; do wget -qO- --header="x-revalidate-secret: $REVALIDATE_SECRET" --header="content-type: application/json" --post-data="{\"tag\":\"$t\"}" http://localhost:3000/api/revalidate; echo; done'
+   ```
+8. Kontrol:
+   - CMS: Site Yapısı → SEO Dosyaları açılıyor; bir kampanyada "İleri Tarihte Yayınla" alanı görünüyor.
+   - Site: `/robots.txt` ve `/llms.txt` açılıyor.
+   - Clover logunda `[scheduled-publish] scheduler started` satırı var.
+
+Detaylar: `tasks.md` #58 ve #59.
