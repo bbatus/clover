@@ -8,7 +8,7 @@ import { sitePreviewUrl } from "@/lib/preview";
 import { dbLabel } from "@/lib/collectionLabels";
 import { CATEGORY_SCOPES } from "@/collections/Categories";
 import { turkishSlugify, uniqueSlug } from "@/lib/slugify";
-import { seoKeywordsField } from "@/lib/seoFields";
+import { seoAssistantField, seoKeywordsField } from "@/lib/seoFields";
 import { assignFooterOrder, FOOTER_ORDER_FIELD_DESCRIPTION, FOOTER_ORDER_MAX } from "@/hooks/ordering";
 
 /**
@@ -252,6 +252,7 @@ export const BlogPosts: CollectionConfig = {
     { name: "seoTitle", type: "text", label: { tr: "SEO Başlığı", en: "SEO Title" } },
     { name: "seoDescription", type: "textarea", label: { tr: "SEO Açıklaması", en: "SEO Description" } },
     seoKeywordsField,
+    seoAssistantField({ collection: "blog-posts", pathPrefix: "/blog/", imageField: "coverImage", descriptionFallback: "body", bodyFields: ["body"] }),
     {
       // RFP §3.1.7: "Each content item should have a deeplink field in
       // order to enable redirection." A post's own /blog/{slug} page is

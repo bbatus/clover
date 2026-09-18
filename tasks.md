@@ -2301,3 +2301,31 @@ menüsünden 3 ürün düşer.
   - Doğrulama: zincir boş DB'ye yüklendi, `pg_dump --schema-only` dev DB ile birebir aynı (12.185 satır).
 - Yerel test verisi: "Zamanlama Testi Kampanyası" (id 25) ve "Zamanlama Negatif Testi" (id 26) yayında, "Ekim Başı Kampanyası" (id 27) 01.10.2026 00:00'a planlı. İstenirse panelden silinebilir.
 - ⚠️ **Deploy öncesi:** canlı DB'de `clover-schema-migration-17-09-to-18-09-2026.sql` (11. ve 12. bölüm) çalıştırılmalı. İki configmap'teki `TZ` değişikliği için configmap'ler OCP'ye uygulanmalı (`oc apply -f k8s/configmap.yaml`, iki repoda da). Clover ve site birlikte deploy edilmeli.
+
+## 60. SEO asistanı — WordPress Yoast benzeri panel (18.09.2026)
+
+- Product ekibine önerilen 4 geliştirmenin ilki (liste CLAUDE.md'de). Kampanyalar, Blog Yazıları ve Sayfalar ekranlarının yan panelinde yeni bir "SEO asistanı" var. Editör yazarken, kaydetmeden anlık güncelleniyor:
+  - **Google'da görünüm:** site adı, adres kırıntısı, ~60 karakterde kesilen başlık, ~160 karakterde kesilen açıklama.
+  - **Paylaşıldığında görünüm:** 1.91:1 kart, görsel, alan adı, başlık, açıklama.
+  - **Kontroller (yeşil / turuncu / kırmızı / gri):**
+    - başlık uzunluğu (30–60) ve açıklama uzunluğu (70–160)
+    - SEO alanı boşsa sitede neyin kullanılacağı
+    - odak anahtar kelime (SEO Anahtar Kelimeleri'nin ilki; Türkçe büyük-küçük harf ve aksan duyarsız) başlıkta, açıklamada ve adreste geçiyor mu
+    - adres uzunluğu ve biçimi
+    - görselin alt metni: dosya adından otomatik üretilmişse "açıklayıcı değil" uyarısı
+    - paylaşım görseli boyutu (≥1200×630)
+    - içerikteki (zengin metin) görsellerin alt metinleri
+    - aynı SEO başlığının başka kayıtta kullanılması
+  - Özet puan: İyi / Geliştirilebilir / Zayıf (Zayıf = kırmızı kontrol ya da ≥3 uyarı).
+  - Yalnızca öneri verir; kaydetmeyi ya da yayınlamayı engellemez.
+- Önizleme sitenin gerçekte ürettiğini taklit ediyor: `seoTitle`, yoksa `"{başlık} | Vodafone Pay"`. Açıklama yoksa kampanyada Açıklama alanı, blogda metnin ilk 155 karakteri, sayfada başlık, anasayfada sitenin varsayılanı. Yerelde sitenin `<title>` çıktısıyla karşılaştırıldı, aynı.
+- **Kod:**
+  - `src/lib/seoAnalysis.ts`: saf kontrol mantığı, "payload" importu yok, 13 test.
+  - `src/components/SeoAssistant.tsx`: tr/en, `useAdminLocale`.
+  - `seoAssistantField()` → `src/lib/seoFields.ts`.
+  - importMap'e eklendi. Stiller custom.css `.seoa-*`; durum renkleri açıkça tanımlı, çünkü bu temada success rengi kırmızı.
+- **Asistan sayesinde bulunan site hatası (site #60-site):** anasayfa, anasayfa belgesinin kendi SEO başlığı, açıklaması ve paylaşım görselini hiç okumuyordu. Düzeltildi.
+- Yerel doğrulama: headless Chrome, 1440px; boş SEO'lu kampanya, yazarken zayıf ve iyi doldurma, blog ve anasayfa ekran görüntüleri.
+  - Yerel dev'de medya adresleri göreli geliyordu (`S3_PUBLIC_URL` .env'de yok). Dev sunucusu S3 değişkenleriyle çalıştırıldı.
+  - Kart önizlemesine yedek eklendi: küçük boy yüklenmezse asıl görsel, o da olmazsa boş durum.
+- Testler 618/618, tsc 0 hata. Şema değişikliği yok (`ui` alanı DB'ye yazmıyor), migration gerekmiyor.

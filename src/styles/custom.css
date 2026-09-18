@@ -2664,3 +2664,86 @@ html[data-theme="dark"] .rapb-awaiting--scheduled {
   background: var(--theme-input-bg, var(--theme-elevation-0));
   color: var(--theme-elevation-800);
 }
+
+/* ---------------------------------------------------------------------
+   SEO asistanı — SeoAssistant.tsx (18.09.2026)
+   Status colours are explicit: this theme maps --theme-success-* to red.
+--------------------------------------------------------------------- */
+.seoa {
+  --seoa-good: #1f7a45;
+  --seoa-warn: #b26b00;
+  --seoa-bad: #c0271d;
+  --seoa-info: #6b7280;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0.5rem 0 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-0);
+}
+html[data-theme="dark"] .seoa {
+  --seoa-good: #6fcf97;
+  --seoa-warn: #f2b84b;
+  --seoa-bad: #f08a7e;
+  --seoa-info: #a1a9b0;
+}
+.seoa-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.seoa-title { font-weight: 600; font-size: 0.95rem; }
+.seoa-score { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 600; }
+.seoa-score--good { color: var(--seoa-good); }
+.seoa-score--ok { color: var(--seoa-warn); }
+.seoa-score--poor { color: var(--seoa-bad); }
+.seoa-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: currentColor; flex: none; }
+.seoa-block { display: flex; flex-direction: column; gap: 0.4rem; }
+.seoa-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--theme-elevation-500);
+}
+/* Google result, drawn with Google's own metrics at sidebar scale */
+.seoa-serp {
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  padding: 0.75rem;
+  border-radius: var(--style-radius-s);
+  background: #fff;
+  border: 1px solid #e3e3e3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.seoa-serp-site { display: flex; align-items: center; gap: 0.5rem; }
+.seoa-serp-favicon {
+  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  background: #e60000; color: #fff; font-weight: 700; font-size: 0.75rem;
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+}
+.seoa-serp-sitemeta { display: flex; flex-direction: column; min-width: 0; }
+.seoa-serp-name { font-size: 0.8rem; color: #202124; }
+.seoa-serp-url { font-size: 0.72rem; color: #4d5156; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seoa-serp-title { font-size: 1.05rem; line-height: 1.3; color: #1a0dab; overflow-wrap: anywhere; }
+.seoa-serp-desc { font-size: 0.8rem; line-height: 1.45; color: #4d5156; overflow-wrap: anywhere; }
+/* Shared-link card (WhatsApp / LinkedIn / Facebook style) */
+.seoa-card { border: 1px solid #dadde1; border-radius: var(--style-radius-s); overflow: hidden; background: #f0f2f5; }
+.seoa-card-img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #dfe3e8; }
+.seoa-card-img--empty {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  padding: 0.75rem; font-size: 0.75rem; color: #65676b;
+}
+.seoa-card-text { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.55rem 0.7rem; font-family: Arial, "Helvetica Neue", sans-serif; }
+.seoa-card-domain { font-size: 0.68rem; color: #65676b; letter-spacing: 0.02em; }
+.seoa-card-title { font-size: 0.88rem; font-weight: 600; color: #1c1e21; overflow-wrap: anywhere; }
+.seoa-card-desc {
+  font-size: 0.78rem; color: #65676b;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.seoa-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+.seoa-check { display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.8rem; line-height: 1.4; }
+.seoa-check .seoa-dot { transform: translateY(-0.05rem); }
+.seoa-check--good .seoa-dot { color: var(--seoa-good); }
+.seoa-check--warn .seoa-dot { color: var(--seoa-warn); }
+.seoa-check--bad .seoa-dot { color: var(--seoa-bad); }
+.seoa-check--info .seoa-dot { color: var(--seoa-info); }
+.seoa-note { margin: 0.25rem 0 0; font-size: 0.72rem; color: var(--theme-elevation-500); }

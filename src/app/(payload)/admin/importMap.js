@@ -45,6 +45,7 @@ import { default as default_130ecbd76bd70cd9a95997b236b69841 } from '../../../co
 import { default as default_45d1ba887b94be4718c6285f137f8a54 } from '../../../components/BlockFieldAutoResolve'
 import { default as default_7fb370ae11a27d414a37ef953f1ef426 } from '../../../components/BlogPostsExportButton'
 import { default as default_5aae2a5a347f869cb905621b589d4c4b } from '../../../components/FooterSyncPanel'
+import { default as default_seo_assistant_7f3c } from '../../../components/SeoAssistant'
 import { default as default_1b8b1ea81afc982cb43ddf312304f6a3 } from '../../../components/UserAvatarIcon'
 import { default as default_e30df20e416e78fe7950694ff579c893 } from '../../../components/AdminIcon'
 import { default as default_48bd4f5ed20a278ca9298ebbc521db88 } from '../../../components/AdminLogo'
@@ -114,6 +115,7 @@ export const importMap = {
   "/components/BlockFieldAutoResolve#default": default_45d1ba887b94be4718c6285f137f8a54,
   "/components/BlogPostsExportButton#default": default_7fb370ae11a27d414a37ef953f1ef426,
   "/components/FooterSyncPanel#default": default_5aae2a5a347f869cb905621b589d4c4b,
+  "/components/SeoAssistant#default": default_seo_assistant_7f3c,
   "/components/UserAvatarIcon#default": default_1b8b1ea81afc982cb43ddf312304f6a3,
   "/components/AdminIcon#default": default_e30df20e416e78fe7950694ff579c893,
   "/components/AdminLogo#default": default_48bd4f5ed20a278ca9298ebbc521db88,

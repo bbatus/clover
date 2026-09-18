@@ -10,7 +10,7 @@ import { assignNextFlaggedOrder } from "@/hooks/ordering";
 import { dbLabel } from "@/lib/collectionLabels";
 import { turkishSlugify, uniqueSlug } from "@/lib/slugify";
 import { CATEGORY_SCOPES, type CategoryScope } from "@/collections/Categories";
-import { seoKeywordsField } from "@/lib/seoFields";
+import { seoAssistantField, seoKeywordsField } from "@/lib/seoFields";
 
 /**
  * RFP §3.3 (Lifecycle Management) / §3.2.13 (drag-and-drop web page design):
@@ -1676,6 +1676,7 @@ export const Pages: CollectionConfig = {
     { name: "seoTitle", label: { tr: "SEO Başlığı", en: "SEO Title" }, type: "text" },
     { name: "seoDescription", label: { tr: "SEO Açıklaması", en: "SEO Description" }, type: "textarea" },
     seoKeywordsField,
+    seoAssistantField({ collection: "pages", pathPrefix: "/", imageField: "ogImage", descriptionFallback: "title" }),
     { name: "ogImage", label: { tr: "Paylaşım Görseli (OG)", en: "OG Image" }, type: "upload", relationTo: "media" },
     {
       // Butterfly-parity gap-fill: simple parent reference for a breadcrumb

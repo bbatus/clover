@@ -15,6 +15,11 @@ Kullanıcıyla konuşuldu, "daha sonranın konusu ama aklımızda tutalım". Bir
   - Sitede bunları uygulayan katman (Next `proxy`/middleware ya da catch-all) ve sitemap'ten yönlendirilen adreslerin çıkarılması.
   - Footer ve menüdeki kırık iç linklerin raporlanması.
 - **IndexNow:** Aynı listede. Hem vendor'da hem bizde yok. Yayın/silme sonrası CMS'in zaten yaptığı revalidate çağrısının yanına eklenebilir; anahtar dosyası sitede sunulur.
+- **Ürün ekibine önerilen geliştirmeler (18.09.2026, kullanıcı onayladı, bu sırayla):**
+  1. **SEO asistanı** (WordPress Yoast benzeri): kampanya, blog ve sayfa ekranında, kaydetmeden önce içeriğin yanında başlık ve açıklama uzunluğu, Google sonuç önizlemesi, sosyal medya kartı önizlemesi, anahtar kelime, adres ve açıklayıcı olmayan alt metin uyarıları. → tasks.md #60.
+  2. **Paylaşılabilir önizleme linki:** CMS hesabı olmayan birine (hukuk, pazarlama müdürü) süreli, tek içeriğe özel taslak linki.
+  3. **Kırık link raporu:** site içindeki kırık linkler ve 404 alan adresler; 301/404 yönetimiyle birlikte.
+  4. **Toplu işlemler:** birden fazla kaydı birlikte yayınlama / yayından kaldırma. Maker→checker kuralları her kayıt için ayrı ayrı geçerli olmalı.
 
 ## ⚠️ Bekleyen deploy adımları (canlı DB'de HENÜZ ÇALIŞTIRILMADI — 18.09.2026)
 
