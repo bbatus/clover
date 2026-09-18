@@ -2354,3 +2354,24 @@ menüsünden 3 ürün düşer.
   - Testler 629/629 (11 yeni uç nokta testi), tsc 0 hata.
 - robots.txt varsayılanına `Disallow: /onizleme/` eklendi (iki repodaki varsayılan dosya, migration §11'in veri tohumu ve yerel DB).
 - **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` dosyasına 13. bölüm eklendi. İçerik: `share_links` tablosu, 1 enum, 6 index, 2 FK, `payload_locked_documents_rels.share_links_id` ile index ve FK. Tekrar çalıştırılabilir. Zincir boş DB'ye yüklendi, şema dev DB ile birebir aynı (12.333 satır). Bekleyen deploy adımları CLAUDE.md'de güncellendi.
+
+## 62. Kırık link raporu (18.09.2026)
+
+- Product ekibine önerilen 4 geliştirmenin 3.sü. Yeni ekran **Site Yapısı → Kırık Linkler** (`/admin/broken-links`, BrokenLinksView/BrokenLinksApp, tr/en, menü ikonu). Tüm roller görebilir; ekran yalnızca raporlar, satırdaki kayda gidip düzeltilir.
+- **İçerikteki kırık linkler** ("Taramayı başlat"):
+  - Taranan kaynaklar: menü linkleri, kampanyalar, blog yazıları, sayfalar, SSS, duyurular, hukuki sayfalar, Footer Yönetimi ve İletişim Bilgileri. Yalnızca yayındaki sürümler.
+  - Link çıkarma (`src/lib/linkScan.ts`, saf mantık): adı url/href/link/deeplink ile biten her alan + Lexical link düğümleri; "internal" CMS belge linkleri ayrıca kontrol ediliyor. Site içi adresler normalize ediliyor, mailto/tel/#/uygulama deeplink'leri atlanıyor, `/` ya da `https://` ile başlamayan adresler "geçersiz" sayılıyor.
+  - Site içi adresler **sitenin kendisine** soruluyor (`src/lib/brokenLinks.ts`): gerçek yönlendirme kullanılıyor, kopyası yazılmadı. Her adres bir kez, 6 paralel, 8 sn zaman aşımı. OCP'de SITE_REVALIDATE_URL'nin origin'i (küme içi), yoksa `SITE_INTERNAL_URL` / SITE_URL.
+  - Dış linkler isteğe bağlı (kutucuk). CMS pod'unun internete çıkışı olmayabilir. Botları reddeden yanıtlar (401/403/405/429, LinkedIn 999) "kırık" sayılmıyor.
+  - Sonuç: link, sorun (404 / sunucu hatası / ulaşılamadı / bağlı içerik yayında değil / silinmiş / geçersiz adres), bulunduğu her kayıt ve alan (kayda link).
+- **404 alan adresler:** sitenin 404 sayfası adresi ve geldiği sayfayı bildiriyor (site #62-site).
+  - `not-found-hits` koleksiyonu (`src/collections/NotFoundHits.ts`, menüde gizli): adres başına sayaç, ilk/son görülme, son geldiği sayfa, "yok say".
+  - Yazma yalnızca sitenin sunucusundan (PREVIEW_SECRET); anahtarsız istek 401.
+  - Bot gürültüsü (dosya uzantıları, wp-*, .env, /api, /_next) iki tarafta da eleniyor. En fazla 5000 farklı adres tutuluyor, var olanların sayacı artmaya devam ediyor.
+  - Geldiği sayfa sitenin kendi sayfasıysa "site içinden" etiketi çıkıyor: o sayfada kırık link var demek.
+- **Doğrulama:**
+  - Yerel yayındaki içerikte 24 link, kırık yok. Kendi test kampanyalarıma (25, 26) bilerek eklenen `/kampanyalar/eski-yaz-kampanyasi` (404) ve `kampanyalar` (göreli) bulundu. 3 dış link (LinkedIn dahil) yanlış alarm vermedi. Test verisi sonra geri alındı.
+  - Headless Chrome ile gerçek ziyaret: aynı olmayan adrese 3 ziyaret sayaçta 3, geldiği sayfa tutuldu. `/wp-login.php` ve `/.env` kaydedilmedi. "Yok say" ve anahtarsız 401 denendi.
+  - Ekran görüntüsü alındı.
+- Testler 636/636 (7 yeni), tsc 0 hata.
+- **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` dosyasına 14. bölüm eklendi. İçerik: `not_found_hits` tablosu, `payload_locked_documents_rels.not_found_hits_id`. Tekrar çalıştırılabilir. Zincir boş DB'ye yüklendi, şema dev DB ile birebir aynı (12.433 satır). CLAUDE.md'deki bekleyen deploy adımları güncellendi.

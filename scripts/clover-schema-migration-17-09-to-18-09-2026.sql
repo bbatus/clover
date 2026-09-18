@@ -19,6 +19,9 @@
 --   13. Paylaşılabilir önizleme linkleri (18.09.2026) → YENİ tablo share_links
 --       (+1 enum, 6 index, 2 FK users), payload_locked_documents_rels'e
 --       share_links_id kolonu + index + FK. Veri değişikliği yok.
+--   14. Kırık link raporu (18.09.2026) → YENİ tablo not_found_hits (sitede
+--       404 alan adresler; 4 index), payload_locked_documents_rels'e
+--       not_found_hits_id kolonu + index + FK. Veri değişikliği yok.
 --       Not: ALTER TYPE ... ADD VALUE PostgreSQL 12+ gerektirir (transaction
 --       içinde çalışır; yeni değer aynı transaction'da kullanılmıyor).
 --
@@ -205,6 +208,44 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payload_locked_documents_rels_share_links_fk') THEN
         ALTER TABLE ONLY public.payload_locked_documents_rels
             ADD CONSTRAINT payload_locked_documents_rels_share_links_fk FOREIGN KEY (share_links_id) REFERENCES public.share_links(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
+
+-- -----------------------------------------------------------------------
+-- 14. Kırık link raporu — sitede 404 alan adresler (18.09.2026)
+-- -----------------------------------------------------------------------
+DO $$
+BEGIN
+    IF to_regclass('public.not_found_hits') IS NULL THEN
+        CREATE TABLE public.not_found_hits (
+            id integer NOT NULL,
+            path character varying NOT NULL,
+            count numeric DEFAULT 1,
+            first_seen_at timestamp(3) with time zone,
+            last_seen_at timestamp(3) with time zone,
+            last_referrer character varying,
+            ignored boolean DEFAULT false,
+            updated_at timestamp(3) with time zone DEFAULT now() NOT NULL,
+            created_at timestamp(3) with time zone DEFAULT now() NOT NULL
+        );
+        CREATE SEQUENCE public.not_found_hits_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+        ALTER SEQUENCE public.not_found_hits_id_seq OWNED BY public.not_found_hits.id;
+        ALTER TABLE ONLY public.not_found_hits ALTER COLUMN id SET DEFAULT nextval('public.not_found_hits_id_seq'::regclass);
+        ALTER TABLE ONLY public.not_found_hits ADD CONSTRAINT not_found_hits_pkey PRIMARY KEY (id);
+        CREATE INDEX not_found_hits_created_at_idx ON public.not_found_hits USING btree (created_at);
+        CREATE INDEX not_found_hits_last_seen_at_idx ON public.not_found_hits USING btree (last_seen_at);
+        CREATE UNIQUE INDEX not_found_hits_path_idx ON public.not_found_hits USING btree (path);
+        CREATE INDEX not_found_hits_updated_at_idx ON public.not_found_hits USING btree (updated_at);
+    END IF;
+END $$;
+ALTER TABLE public.payload_locked_documents_rels ADD COLUMN IF NOT EXISTS not_found_hits_id integer;
+CREATE INDEX IF NOT EXISTS payload_locked_documents_rels_not_found_hits_id_idx ON public.payload_locked_documents_rels USING btree (not_found_hits_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payload_locked_documents_rels_not_found_hits_fk') THEN
+        ALTER TABLE ONLY public.payload_locked_documents_rels
+            ADD CONSTRAINT payload_locked_documents_rels_not_found_hits_fk FOREIGN KEY (not_found_hits_id) REFERENCES public.not_found_hits(id) ON DELETE CASCADE;
     END IF;
 END $$;
 

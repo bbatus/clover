@@ -328,6 +328,7 @@ export const TRANSLATION_DEFAULTS: Record<string, { tr: string; en: string }> = 
   "feesAndLimits.colOrder": { tr: "Sıra", en: "Order" },
   "feesAndLimits.reorderTitle": { tr: "Sürükleyerek Sırala", en: "Drag to Reorder" },
   "feesAndLimits.navLabel": { tr: "Ücretler ve Limitler", en: "Fees and Limits" },
+  "brokenLinks.navLabel": { tr: "Kırık Linkler", en: "Broken Links" },
 
   "lockedAccounts.colUntil": { tr: "Kilit bitişi", en: "Locked until" },
   "lockedAccounts.notLocked": { tr: "Hesap kilitli değil.", en: "Account is not locked." },

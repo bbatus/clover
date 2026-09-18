@@ -51,6 +51,8 @@ import { ContactInfo } from "./src/globals/ContactInfo";
 import { FooterSettings } from "./src/globals/FooterSettings";
 import { SeoFiles } from "./src/globals/SeoFiles";
 import { ShareLinks } from "./src/collections/ShareLinks";
+import { NotFoundHits } from "./src/collections/NotFoundHits";
+import { brokenLinksScanEndpoint } from "./src/lib/brokenLinks";
 import { startScheduledPublishing } from "./src/lib/campaignSchedule";
 import { ROLES } from "./src/access/roles";
 import { env } from "./src/env";
@@ -289,6 +291,11 @@ export default buildConfig({
           },
         },
         {
+          // 18.09.2026 — Kırık Linkler (BrokenLinksView).
+          path: "/components/GroupedNavLink#default",
+          clientProps: { href: "/admin/broken-links", labelKey: "brokenLinks.navLabel", groupNames: ["Site Yapısı", "Site Structure"] },
+        },
+        {
           path: "/components/GroupedNavLink#default",
           clientProps: { href: "/admin/feedback", labelKey: "feedback.navLabel", groupNames: [], spaced: true },
         },
@@ -330,6 +337,11 @@ export default buildConfig({
         feedback: {
           Component: "/components/FeedbackView#default",
           path: "/feedback",
+        },
+        // 18.09.2026 — broken links in content + the site's 404 hits.
+        brokenLinks: {
+          Component: "/components/BrokenLinksView#default",
+          path: "/broken-links",
         },
         // RFP feedback 3.4: disable self-service password reset (LDAP will
         // own identity later) — overriding the built-in view keys blocks
@@ -433,6 +445,7 @@ export default buildConfig({
     Documents,
     AuditLogs,
     ShareLinks,
+    NotFoundHits,
     Translations,
     // — İçerik Yönetimi —
     Categories,
@@ -459,7 +472,7 @@ export default buildConfig({
   // endpoint is the extension point for that, unrelated to any one
   // collection's own CRUD lifecycle.
   // Health probes for OCP (liveness/readiness) — see healthEndpoints.ts.
-  endpoints: [auditExportEndpoint, livenessEndpoint, readinessEndpoint],
+  endpoints: [auditExportEndpoint, livenessEndpoint, readinessEndpoint, brokenLinksScanEndpoint],
   // RFP §7.2: logs every rejected (403) write attempt, across every
   // collection at once — see auditForbiddenAttempt's doc comment
   // (hooks/audit.ts) for why root-level is the right extension point here.

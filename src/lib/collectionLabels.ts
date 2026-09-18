@@ -31,6 +31,7 @@ export const COLLECTION_LABELS: Record<string, { tr: string; en: string }> = {
   "footer-settings": { tr: "Footer Yönetimi", en: "Footer Management" },
   "seo-files": { tr: "SEO Dosyaları", en: "SEO Files" },
   "share-links": { tr: "Önizleme Linkleri", en: "Preview Links" },
+  "not-found-hits": { tr: "404 Kayıtları", en: "404 Hits" },
 };
 
 /** Collections with `versions.drafts: true` — these can be split published/taslak. Everything else is a flat total. */
