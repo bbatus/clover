@@ -409,4 +409,22 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
       ],
     },
   },
+  "share-links": {
+    tr: {
+      title: "Önizleme Linkleri",
+      steps: [
+        "CMS hesabı olmayan birine (hukuk, pazarlama) bir kampanyanın, blog yazısının ya da sayfanın yayınlanmamış halini göstermek için kullanılır.",
+        "Link, içerik ekranının yan panelindeki 'Önizleme linki paylaş' bölümünden 1, 3 ya da 7 günlüğüne oluşturulur. Link yalnızca oluşturulduğu anda gösterilir; kopyalayıp gönderin.",
+        "Link yalnızca o içeriği gösterir; süresi dolunca ya da iptal edilince çalışmaz. Her açılış burada sayılır ve denetim kaydına yazılır.",
+      ],
+    },
+    en: {
+      title: "Preview Links",
+      steps: [
+        "Used to show someone without a CMS account (legal, marketing) the unpublished version of a campaign, blog post or page.",
+        "Create one for 1, 3 or 7 days from the 'Share a preview link' panel on the content screen. The link is shown only once, when created; copy it and send it.",
+        "A link shows only that content and stops working when it expires or is revoked. Every view is counted here and written to the audit log.",
+      ],
+    },
+  },
 };

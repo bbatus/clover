@@ -50,6 +50,7 @@ import { Feedback } from "./src/collections/Feedback";
 import { ContactInfo } from "./src/globals/ContactInfo";
 import { FooterSettings } from "./src/globals/FooterSettings";
 import { SeoFiles } from "./src/globals/SeoFiles";
+import { ShareLinks } from "./src/collections/ShareLinks";
 import { startScheduledPublishing } from "./src/lib/campaignSchedule";
 import { ROLES } from "./src/access/roles";
 import { env } from "./src/env";
@@ -431,6 +432,7 @@ export default buildConfig({
     Media,
     Documents,
     AuditLogs,
+    ShareLinks,
     Translations,
     // — İçerik Yönetimi —
     Categories,

@@ -11,7 +11,7 @@ import { COLLECTION_LABELS, DRAFT_ENABLED_COLLECTIONS } from "@/lib/collectionLa
  * collection; see the comment on each category for which collections use it
  * and why.
  */
-type Category = "standard" | "media" | "campaigns" | "users" | "audit-logs" | "contact-info" | "draft-global";
+type Category = "standard" | "media" | "campaigns" | "users" | "audit-logs" | "contact-info" | "draft-global" | "share-links";
 
 const CATEGORY_BY_COLLECTION: Record<string, Category> = {
   // create: standardCreate, update: standardReadWrite, delete: standardDelete
@@ -39,6 +39,9 @@ const CATEGORY_BY_COLLECTION: Record<string, Category> = {
   // denyMakerPublishGlobal/denyMakerEditPublishedGlobal (globals/FooterSettings.ts)
   "footer-settings": "draft-global",
   "seo-files": "draft-global",
+  // Created/revoked only through its own endpoints (collections/ShareLinks.ts);
+  // "update" here = revoking one's own link (Checkers and NV Maker: anyone's).
+  "share-links": "share-links",
 };
 
 export type PermissionFlags = {
@@ -107,6 +110,12 @@ const MATRIX: Record<Category, Record<RoleValue, PermissionFlags>> = {
     [NV_CHECKER]: { view: true, create: false, update: true, publish: false, delete: false },
     [G_MAKER]: { view: false, create: false, update: false, publish: false, delete: false },
     [G_CHECKER]: { view: false, create: false, update: false, publish: false, delete: false },
+  },
+  "share-links": {
+    [NV_MAKER]: { view: true, create: true, update: true, publish: false, delete: false },
+    [NV_CHECKER]: { view: true, create: true, update: true, publish: false, delete: false },
+    [G_MAKER]: { view: true, create: true, update: true, publish: false, delete: false },
+    [G_CHECKER]: { view: true, create: true, update: true, publish: false, delete: false },
   },
   "draft-global": {
     [NV_MAKER]: { view: true, create: false, update: true, publish: true, delete: false },

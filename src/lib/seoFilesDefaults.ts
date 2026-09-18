@@ -6,6 +6,7 @@
  */
 export const DEFAULT_ROBOTS_TXT = `User-agent: *
 Disallow: /api/
+Disallow: /onizleme/
 Disallow: /*.pdf
 
 # --- Yapay zeka botlari ---

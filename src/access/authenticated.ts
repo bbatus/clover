@@ -9,7 +9,7 @@ import type { Access, CollectionBeforeOperationHook } from "payload";
  * with this shared secret instead. Constant-time compare, same pattern as
  * the site's own /api/revalidate secret check.
  */
-function hasValidPreviewSecret(req: { headers: { get(name: string): string | null } }): boolean {
+export function hasValidPreviewSecret(req: { headers: { get(name: string): string | null } }): boolean {
   const provided = req.headers.get("x-preview-secret");
   const expected = process.env.PREVIEW_SECRET;
   if (!provided || !expected) return false;

@@ -2329,3 +2329,28 @@ menüsünden 3 ürün düşer.
   - Yerel dev'de medya adresleri göreli geliyordu (`S3_PUBLIC_URL` .env'de yok). Dev sunucusu S3 değişkenleriyle çalıştırıldı.
   - Kart önizlemesine yedek eklendi: küçük boy yüklenmezse asıl görsel, o da olmazsa boş durum.
 - Testler 618/618, tsc 0 hata. Şema değişikliği yok (`ui` alanı DB'ye yazmıyor), migration gerekmiyor.
+
+## 61. Paylaşılabilir önizleme linki (18.09.2026)
+
+- Product ekibine önerilen 4 geliştirmenin 2.si. Kampanya, blog ve sayfa ekranlarının yan panelinde "Önizleme linki paylaş" var:
+  - Süre seçilir (1, 3 ya da 7 gün) ve isteğe bağlı olarak "Kime / neden" notu girilir.
+  - "Link oluştur" → link YALNIZCA o anda gösterilir, "Kopyala" ile alınır.
+  - Altta bu içeriğin aktif linkleri listelenir (not, bitiş tarihi İstanbul saatiyle, kaç kez açıldığı, oluşturan) ve "İptal et" butonu bulunur.
+- **Güvenlik tasarımı (`src/collections/ShareLinks.ts`):**
+  - Editörlerin kendi "Önizle"si bilinçli olarak kullanılmadı: o, ortak PREVIEW_SECRET ile tarayıcıya draft-mode çerezi basıyor (bütün taslakları açar) ve bandı sırrı HTML'e gömüyor.
+  - Her link tek belgeye bağlı 24 baytlık rastgele bir anahtar taşır. DB'de yalnızca SHA-256'sı saklanır; `tokenHash` alanı API'de hiç okunamaz.
+  - Normal REST ile create/update/delete kapalı. Yalnızca 3 uç nokta var:
+    - `POST /api/share-links/create`: giriş gerekli. Oluşturanın içeriği kendi yetkisiyle okuyabildiği `overrideAccess:false` ile kontrol edilir. Sadece campaigns / blog-posts / pages, süre 1/3/7.
+    - `POST /:id/revoke`: oluşturan kişi ya da NV Maker, NV Checker, Growth Checker.
+    - `GET /resolve/:token`: yalnızca sunucudan sunucuya, PREVIEW_SECRET başlığıyla. Süresi dolmuş ya da iptal edilmiş link için 410 + sebep döner.
+  - Oluşturma, iptal ve her açılış denetim kaydına yazılır; açılışta aktör "önizleme linki ziyaretçisi" olarak görünür.
+  - "Önizleme Linkleri" listesi (Sistem grubu) denetim içindir; rol matrisi, etiket, yardım ve menü ikonu eklendi.
+- Site tarafı: vodafonepaycomtr-site #61-site.
+- **Doğrulama:**
+  - REST: anahtarsız resolve 401; normal create 403; tokenHash listede yok; Growth Maker başkasının linkini iptal edemez (403) ama kendisininkini edebilir; Growth Checker başkasınınkini iptal edebilir; 30 günlük süre ve `users` koleksiyonu reddedilir.
+  - Otomatik giriş KAPALIYKEN: anonim taslak okuma 403. Taslak kampanyanın normal site adresi 404, aynı taslak önizleme linkiyle açılıyor. Otomatik girişliyken normal adresin de 200 dönmesi o yerel ayarın kendi davranışı.
+  - Sitede kampanya, blog ve anasayfa önizlemeleri açıldı; iptal edilmiş, süresi dolmuş ve geçersiz linkler kendi mesajlarını gösterdi.
+  - Ekran görüntüleri: panel (link oluşturulmuş), site önizlemesi, liste, süresi dolmuş link.
+  - Testler 629/629 (11 yeni uç nokta testi), tsc 0 hata.
+- robots.txt varsayılanına `Disallow: /onizleme/` eklendi (iki repodaki varsayılan dosya, migration §11'in veri tohumu ve yerel DB).
+- **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` dosyasına 13. bölüm eklendi. İçerik: `share_links` tablosu, 1 enum, 6 index, 2 FK, `payload_locked_documents_rels.share_links_id` ile index ve FK. Tekrar çalıştırılabilir. Zincir boş DB'ye yüklendi, şema dev DB ile birebir aynı (12.333 satır). Bekleyen deploy adımları CLAUDE.md'de güncellendi.

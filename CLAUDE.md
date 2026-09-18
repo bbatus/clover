@@ -16,8 +16,8 @@ Kullanıcıyla konuşuldu, "daha sonranın konusu ama aklımızda tutalım". Bir
   - Footer ve menüdeki kırık iç linklerin raporlanması.
 - **IndexNow:** Aynı listede. Hem vendor'da hem bizde yok. Yayın/silme sonrası CMS'in zaten yaptığı revalidate çağrısının yanına eklenebilir; anahtar dosyası sitede sunulur.
 - **Ürün ekibine önerilen geliştirmeler (18.09.2026, kullanıcı onayladı, bu sırayla):**
-  1. **SEO asistanı** (WordPress Yoast benzeri): kampanya, blog ve sayfa ekranında, kaydetmeden önce içeriğin yanında başlık ve açıklama uzunluğu, Google sonuç önizlemesi, sosyal medya kartı önizlemesi, anahtar kelime, adres ve açıklayıcı olmayan alt metin uyarıları. → tasks.md #60.
-  2. **Paylaşılabilir önizleme linki:** CMS hesabı olmayan birine (hukuk, pazarlama müdürü) süreli, tek içeriğe özel taslak linki.
+  1. ✅ **SEO asistanı** (WordPress Yoast benzeri, YAPILDI 18.09.2026): kampanya, blog ve sayfa ekranında, kaydetmeden önce içeriğin yanında başlık ve açıklama uzunluğu, Google sonuç önizlemesi, sosyal medya kartı önizlemesi, anahtar kelime, adres ve açıklayıcı olmayan alt metin uyarıları. → tasks.md #60.
+  2. ✅ **Paylaşılabilir önizleme linki** (YAPILDI 18.09.2026, tasks.md #61): CMS hesabı olmayan birine (hukuk, pazarlama müdürü) süreli, tek içeriğe özel taslak linki.
   3. **Kırık link raporu:** site içindeki kırık linkler ve 404 alan adresler; 301/404 yönetimiyle birlikte.
   4. **Toplu işlemler:** birden fazla kaydı birlikte yayınlama / yayından kaldırma. Maker→checker kuralları her kayıt için ayrı ayrı geçerli olmalı.
 
@@ -30,6 +30,7 @@ Kullanıcı: "bu sessionda henüz deploy etmicem, geliştirmeler devam edecek." 
 **Çalıştırılacak tek dosya:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql`
 - §11 — SEO Dosyaları global'i: `seo_files` / `_seo_files_v` tabloları, robots.txt ve llms.txt başlangıç içeriği (VERİ).
 - §12 — Kampanya zamanlanmış yayını: `campaigns` / `_campaigns_v` kolonları, saat dilimi enum'ları, `review_status`'a `'scheduled'` değeri.
+- §13 — Paylaşılabilir önizleme linkleri: `share_links` tablosu, `payload_locked_documents_rels.share_links_id`.
 - Tekrar çalıştırılabilir. PostgreSQL 12+ gerekir. Zincirle birlikte boş DB'de doğrulandı; şema dev DB ile birebir aynı.
 
 **Deploy sırası:**
@@ -39,9 +40,10 @@ Kullanıcı: "bu sessionda henüz deploy etmicem, geliştirmeler devam edecek." 
 4. Kontrol:
    ```sql
    SELECT to_regclass('public.seo_files') AS seo, (SELECT count(*) FROM seo_files) AS seo_kaydi,
-          (SELECT count(*) FROM information_schema.columns WHERE table_name='campaigns' AND column_name='scheduled_publish_at') AS zamanlama;
+          (SELECT count(*) FROM information_schema.columns WHERE table_name='campaigns' AND column_name='scheduled_publish_at') AS zamanlama,
+          to_regclass('public.share_links') AS onizleme;
    ```
-   Beklenen: `seo_files | 1 | 1`.
+   Beklenen: `seo_files | 1 | 1 | share_links`.
 5. Configmap'leri uygula; ikisine de `TZ: "Europe/Istanbul"` eklendi. `clover/` ve `vodafonepaycomtr-site/` içinde ayrı ayrı `oc apply -f k8s/configmap.yaml`.
 6. Önce Clover'ı, sonra siteyi deploy et (`oc rollout status ...`).
 7. Site önbelleğini tazele. Build sırasında CMS'e ulaşılamazsa sayfalar eksik veriyle önbelleğe giriyor:
@@ -52,5 +54,7 @@ Kullanıcı: "bu sessionda henüz deploy etmicem, geliştirmeler devam edecek." 
    - CMS: Site Yapısı → SEO Dosyaları açılıyor; bir kampanyada "İleri Tarihte Yayınla" alanı görünüyor.
    - Site: `/robots.txt` ve `/llms.txt` açılıyor.
    - Clover logunda `[scheduled-publish] scheduler started` satırı var.
+   - Bir kampanyada "Önizleme linki paylaş" ile link oluştur ve gizli pencerede aç: önizleme bandı görünmeli. Linki panelden iptal et; aynı link "iptal edilmiş" demeli.
+   - Önizleme linki için iki pod'da da `PREVIEW_SECRET` aynı olmalı (zaten öyle), ve Clover'ın `SITE_URL`'i sitenin dışarıdan açılan adresi olmalı; link bu adresle üretilir.
 
 Detaylar: `tasks.md` #58 ve #59.

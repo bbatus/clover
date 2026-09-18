@@ -11,6 +11,7 @@ import { dbLabel } from "@/lib/collectionLabels";
 import { turkishSlugify, uniqueSlug } from "@/lib/slugify";
 import { CATEGORY_SCOPES, type CategoryScope } from "@/collections/Categories";
 import { seoAssistantField, seoKeywordsField } from "@/lib/seoFields";
+import { sharePreviewField } from "@/lib/sharePreviewField";
 
 /**
  * RFP §3.3 (Lifecycle Management) / §3.2.13 (drag-and-drop web page design):
@@ -1677,6 +1678,7 @@ export const Pages: CollectionConfig = {
     { name: "seoDescription", label: { tr: "SEO Açıklaması", en: "SEO Description" }, type: "textarea" },
     seoKeywordsField,
     seoAssistantField({ collection: "pages", pathPrefix: "/", imageField: "ogImage", descriptionFallback: "title" }),
+    sharePreviewField,
     { name: "ogImage", label: { tr: "Paylaşım Görseli (OG)", en: "OG Image" }, type: "upload", relationTo: "media" },
     {
       // Butterfly-parity gap-fill: simple parent reference for a breadcrumb

@@ -2612,6 +2612,11 @@ html[data-theme="dark"] .rapb-awaiting--scheduled {
 .nav .nav__link[href="/admin/globals/seo-files"] {
   --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z'/%3E%3Cpath d='M14 2v5a1 1 0 0 0 1 1h5'/%3E%3Cpath d='M10 12.5 8 15l2 2.5'/%3E%3Cpath d='m14 12.5 2 2.5-2 2.5'/%3E%3C/svg%3E");
 }
+/* link (shared preview links) */
+.nav #nav-share-links,
+.nav .nav__link[href="/admin/collections/share-links"] {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+}
 /* message-square-text */
 .nav .nav__link[href="/admin/feedback"] {
   --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z'/%3E%3Cpath d='M7 11h10'/%3E%3Cpath d='M7 15h6'/%3E%3Cpath d='M7 7h8'/%3E%3C/svg%3E");
@@ -2747,3 +2752,53 @@ html[data-theme="dark"] .seoa {
 .seoa-check--bad .seoa-dot { color: var(--seoa-bad); }
 .seoa-check--info .seoa-dot { color: var(--seoa-info); }
 .seoa-note { margin: 0.25rem 0 0; font-size: 0.72rem; color: var(--theme-elevation-500); }
+
+/* ---------------------------------------------------------------------
+   Önizleme linki paylaş — SharePreviewPanel.tsx (18.09.2026)
+--------------------------------------------------------------------- */
+.spp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-0);
+}
+.spp-title { font-weight: 600; font-size: 0.95rem; }
+.spp-subtitle { font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--theme-elevation-500); }
+.spp-muted { margin: 0; font-size: 0.78rem; line-height: 1.45; color: var(--theme-elevation-500); }
+.spp-form { display: flex; flex-direction: column; gap: 0.6rem; }
+.spp-field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; }
+.spp-field select,
+.spp-field input,
+.spp-url input {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-s);
+  background: var(--theme-input-bg, var(--theme-elevation-0));
+  color: var(--theme-text);
+}
+.spp-form .btn { margin: 0; align-self: flex-start; }
+.spp-error { margin: 0; font-size: 0.8rem; color: #c0271d; }
+.spp-created {
+  display: flex; flex-direction: column; gap: 0.45rem;
+  padding: 0.75rem; border-radius: var(--style-radius-s);
+  background: #e8f5ed; border: 1px solid #9fd3b3; color: #17603a; font-size: 0.8rem;
+}
+html[data-theme="dark"] .spp-created { background: #16301f; border-color: #2f6b47; color: #8fd9ab; }
+.spp-created p { margin: 0; }
+.spp-url { display: flex; gap: 0.4rem; align-items: center; }
+.spp-url input { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.72rem; }
+.spp-url .btn { margin: 0; }
+.spp-list ul { list-style: none; margin: 0.4rem 0 0; padding: 0; display: flex; flex-direction: column; }
+.spp-link {
+  display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+  padding: 0.55rem 0; border-top: 1px solid var(--theme-elevation-100);
+}
+.spp-link-text { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.75rem; color: var(--theme-elevation-600); min-width: 0; }
+.spp-link-text strong { font-size: 0.82rem; color: var(--theme-text); font-weight: 600; overflow-wrap: anywhere; }
+.spp-link .btn { margin: 0; flex: none; }

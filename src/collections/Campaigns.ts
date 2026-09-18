@@ -11,6 +11,7 @@ import { CATEGORY_SCOPES } from "@/collections/Categories";
 import { assignFooterOrder, FOOTER_ORDER_FIELD_DESCRIPTION, FOOTER_ORDER_MAX } from "@/hooks/ordering";
 import { autoSlug } from "@/hooks/autoSlug";
 import { seoAssistantField, seoKeywordsField } from "@/lib/seoFields";
+import { sharePreviewField } from "@/lib/sharePreviewField";
 import { manageCampaignSchedule, SCHEDULE_TIME_ZONE } from "@/lib/campaignSchedule";
 
 /**
@@ -563,6 +564,7 @@ export const Campaigns: CollectionConfig = {
     },
     seoKeywordsField,
     seoAssistantField({ collection: "campaigns", pathPrefix: "/kampanyalar/", imageField: "image", descriptionFallback: "description", descriptionField: "description", bodyFields: ["body", "terms"] }),
+    sharePreviewField,
     {
       type: "row",
       fields: [
