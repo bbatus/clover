@@ -10,6 +10,13 @@
 --       2 enum; robots.txt ve llms.txt'nin başlangıç içeriği (VERİ, canlı
 --       vodafonepay.com.tr'deki dosyalarla aynı; robots.txt'ye canlıdaki gibi
 --       `Disallow: /*.pdf` dahil).
+--   12. Kampanyalarda zamanlanmış yayın (18.09.2026) → campaigns ve
+--       _campaigns_v'ye 5'er kolon (yayın zamanı ve saat dilimi, planı
+--       onaylayan, onay zamanı ve saat dilimi) + 4 YENİ enum (saat dilimi) +
+--       review_status enum'larına
+--       'scheduled' değeri + 2 index + 2 FK (users). Veri değişikliği yok.
+--       Not: ALTER TYPE ... ADD VALUE PostgreSQL 12+ gerektirir (transaction
+--       içinde çalışır; yeni değer aynı transaction'da kullanılmıyor).
 --
 -- NASIL DOĞRULANDI: clover-test-db-schema.sql → 01-09-to-02-09 →
 -- 02-09-to-17-09 → bu script boş bir scratch DB'ye sırayla yüklendi; tüm
@@ -91,5 +98,55 @@ INSERT INTO public._seo_files_v (version_robots_txt, version_llms_txt, version__
 SELECT s.robots_txt, s.llms_txt, 'published', now(), now(), true
 FROM public.seo_files s
 WHERE NOT EXISTS (SELECT 1 FROM public._seo_files_v);
+
+
+-- -----------------------------------------------------------------------
+-- 12. Kampanya zamanlanmış yayını (18.09.2026)
+--
+-- Maker "İleri Tarihte Yayınla" alanına tarih/saat seçip onaya gönderir;
+-- Checker "Onayla ve Planla" der (review_status = 'scheduled'); CMS
+-- içindeki zamanlayıcı o an gelince kampanyayı yayına alır. Zaman UTC
+-- anı (timestamptz) olarak saklanır, panel İstanbul saatiyle gösterir.
+-- -----------------------------------------------------------------------
+ALTER TYPE public.enum_campaigns_review_status ADD VALUE IF NOT EXISTS 'scheduled';
+ALTER TYPE public.enum__campaigns_v_version_review_status ADD VALUE IF NOT EXISTS 'scheduled';
+DO $$
+BEGIN
+    IF to_regtype('public.enum_campaigns_scheduledpublishat_tz') IS NULL THEN
+        CREATE TYPE public.enum_campaigns_scheduledpublishat_tz AS ENUM ('Europe/Istanbul');
+    END IF;
+    IF to_regtype('public.enum__campaigns_v_version_scheduledpublishat_tz') IS NULL THEN
+        CREATE TYPE public.enum__campaigns_v_version_scheduledpublishat_tz AS ENUM ('Europe/Istanbul');
+    END IF;
+    IF to_regtype('public.enum_campaigns_scheduleapprovedat_tz') IS NULL THEN
+        CREATE TYPE public.enum_campaigns_scheduleapprovedat_tz AS ENUM ('Europe/Istanbul');
+    END IF;
+    IF to_regtype('public.enum__campaigns_v_version_scheduleapprovedat_tz') IS NULL THEN
+        CREATE TYPE public.enum__campaigns_v_version_scheduleapprovedat_tz AS ENUM ('Europe/Istanbul');
+    END IF;
+END $$;
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS scheduled_publish_at timestamp(3) with time zone;
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS scheduledpublishat_tz public.enum_campaigns_scheduledpublishat_tz DEFAULT 'Europe/Istanbul'::public.enum_campaigns_scheduledpublishat_tz;
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS schedule_approved_by_id integer;
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS schedule_approved_at timestamp(3) with time zone;
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS scheduleapprovedat_tz public.enum_campaigns_scheduleapprovedat_tz DEFAULT 'Europe/Istanbul'::public.enum_campaigns_scheduleapprovedat_tz;
+ALTER TABLE public._campaigns_v ADD COLUMN IF NOT EXISTS version_scheduled_publish_at timestamp(3) with time zone;
+ALTER TABLE public._campaigns_v ADD COLUMN IF NOT EXISTS version_scheduledpublishat_tz public.enum__campaigns_v_version_scheduledpublishat_tz DEFAULT 'Europe/Istanbul'::public.enum__campaigns_v_version_scheduledpublishat_tz;
+ALTER TABLE public._campaigns_v ADD COLUMN IF NOT EXISTS version_schedule_approved_by_id integer;
+ALTER TABLE public._campaigns_v ADD COLUMN IF NOT EXISTS version_schedule_approved_at timestamp(3) with time zone;
+ALTER TABLE public._campaigns_v ADD COLUMN IF NOT EXISTS version_scheduleapprovedat_tz public.enum__campaigns_v_version_scheduleapprovedat_tz DEFAULT 'Europe/Istanbul'::public.enum__campaigns_v_version_scheduleapprovedat_tz;
+CREATE INDEX IF NOT EXISTS campaigns_schedule_approved_by_idx ON public.campaigns USING btree (schedule_approved_by_id);
+CREATE INDEX IF NOT EXISTS _campaigns_v_version_version_schedule_approved_by_idx ON public._campaigns_v USING btree (version_schedule_approved_by_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'campaigns_schedule_approved_by_id_users_id_fk') THEN
+        ALTER TABLE ONLY public.campaigns
+            ADD CONSTRAINT campaigns_schedule_approved_by_id_users_id_fk FOREIGN KEY (schedule_approved_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = '_campaigns_v_version_schedule_approved_by_id_users_id_fk') THEN
+        ALTER TABLE ONLY public._campaigns_v
+            ADD CONSTRAINT _campaigns_v_version_schedule_approved_by_id_users_id_fk FOREIGN KEY (version_schedule_approved_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 COMMIT;

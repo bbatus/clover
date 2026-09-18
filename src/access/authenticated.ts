@@ -52,7 +52,11 @@ export const publishedOrAuthenticated: Access = ({ req }) => {
  */
 export const denyUnauthenticatedDraftRead: CollectionBeforeOperationHook = ({ args, operation, req }) => {
   const wantsDraft = "draft" in args && args.draft === true;
-  if ((operation === "read") && wantsDraft && !req.user && !hasValidPreviewSecret(req)) {
+  // Server-side Local API calls that explicitly override access (e.g. the
+  // scheduled campaign publisher, 18.09.2026) are trusted code, not a visitor.
+  // REST/GraphQL requests always run with overrideAccess false.
+  const trustedServerCall = "overrideAccess" in args && args.overrideAccess === true;
+  if ((operation === "read") && wantsDraft && !trustedServerCall && !req.user && !hasValidPreviewSecret(req)) {
     throw new Forbidden(req.t);
   }
   return args;

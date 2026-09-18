@@ -101,6 +101,19 @@ export const TRANSLATION_DEFAULTS: Record<string, { tr: string; en: string }> = 
     en: "I confirm this is an urgent fix and that the review step is being skipped deliberately.",
   },
   "roleAwarePublishButton.forceConfirm": { tr: "Onayla ve Canlıya Uygula", en: "Confirm & Apply Live" },
+  // 18.09.2026 — zamanlanmış yayın (lib/campaignSchedule.ts). {date} = İstanbul saatiyle tarih.
+  "roleAwarePublishButton.scheduleApprove": { tr: "Onayla ve Planla", en: "Approve & Schedule" },
+  "roleAwarePublishButton.scheduleHeading": { tr: "İleri tarihli yayını onaylıyorsunuz", en: "You're approving a scheduled publish" },
+  "roleAwarePublishButton.scheduleBody": {
+    tr: "Onaylarsanız kampanya {date} (İstanbul saati) tarihinde kendiliğinden yayına girer. O ana kadar taslak kalır; bu sürede yapılan her değişiklik onayı düşürür ve yeniden onay gerekir.",
+    en: "Once approved, the campaign goes live by itself on {date} (Istanbul time). Until then it stays a draft; any change in the meantime drops the approval and needs a new one.",
+  },
+  "roleAwarePublishButton.scheduleConfirm": { tr: "Onayla — {date} için planla", en: "Approve — schedule for {date}" },
+  "roleAwarePublishButton.scheduling": { tr: "Kaydediliyor…", en: "Saving…" },
+  "roleAwarePublishButton.scheduledNotice": { tr: "Planlandı: {date} (İstanbul) yayına girecek", en: "Scheduled: goes live {date} (Istanbul)" },
+  "roleAwarePublishButton.cancelSchedule": { tr: "Planı İptal Et", en: "Cancel Schedule" },
+  "roleAwarePublishButton.cancellingSchedule": { tr: "İptal ediliyor…", en: "Cancelling…" },
+  "roleAwarePublishButton.awaitingScheduled": { tr: "Onay bekliyor — {date} (İstanbul) için planlandı", en: "Awaiting approval — planned for {date} (Istanbul)" },
   "roleAwarePublishButton.submitFailed": {
     tr: "Kaydedilemedi — zorunlu bir alan eksik olabilir ya da bu işlem için yetkiniz olmayabilir. Formdaki hata mesajlarını kontrol edip tekrar deneyin.",
     en: "Couldn't save — a required field may be missing, or you may not have permission. Check the form for errors and try again.",

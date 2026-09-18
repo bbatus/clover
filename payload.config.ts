@@ -50,6 +50,7 @@ import { Feedback } from "./src/collections/Feedback";
 import { ContactInfo } from "./src/globals/ContactInfo";
 import { FooterSettings } from "./src/globals/FooterSettings";
 import { SeoFiles } from "./src/globals/SeoFiles";
+import { startScheduledPublishing } from "./src/lib/campaignSchedule";
 import { ROLES } from "./src/access/roles";
 import { env } from "./src/env";
 import { TRANSLATION_DEFAULTS } from "./src/lib/translationDefaults";
@@ -231,6 +232,12 @@ export default buildConfig({
     // "default" (generic silhouette) or "gravatar" — neither reads our own
     // users.avatar upload field.
     avatar: { Component: "/components/UserAvatarIcon#default" },
+    // 18.09.2026: date+time pickers (Kampanyalar → İleri Tarihte Yayınla) show
+    // and take Istanbul time whatever the editor's browser or the pod is set to.
+    timezones: {
+      supportedTimezones: [{ label: "İstanbul (UTC+3)", value: "Europe/Istanbul" }],
+      defaultTimezone: "Europe/Istanbul",
+    },
     components: {
       graphics: {
         Logo: "/components/AdminLogo#default",
@@ -387,6 +394,9 @@ export default buildConfig({
       payload.logger.info(`[translations] Seeded ${created} new row(s), refreshed ${refreshed} un-customized row(s) from code defaults.`);
     }
     await refreshLabelCache(payload);
+
+    // 18.09.2026: publishes approved campaigns when their scheduled time comes.
+    startScheduledPublishing(payload);
 
     if (!autoLoginEnabled) return;
     const existing = await payload.find({

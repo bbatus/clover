@@ -70,6 +70,26 @@ describe("denyUnauthenticatedDraftRead", () => {
     ).not.toThrow();
   });
 
+  it("allows a trusted server-side Local API call (overrideAccess: true) with draft=true", () => {
+    expect(() =>
+      denyUnauthenticatedDraftRead({
+        args: { draft: true, overrideAccess: true },
+        operation: "read",
+        req: reqWithUser(false),
+      } as never)
+    ).not.toThrow();
+  });
+
+  it("still blocks an anonymous draft read that does not override access (REST shape)", () => {
+    expect(() =>
+      denyUnauthenticatedDraftRead({
+        args: { draft: true, overrideAccess: false },
+        operation: "read",
+        req: reqWithUser(false),
+      } as never)
+    ).toThrow();
+  });
+
   it("allows an authenticated request with draft=true", () => {
     expect(() =>
       denyUnauthenticatedDraftRead({

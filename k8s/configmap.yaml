@@ -19,6 +19,12 @@ metadata:
   labels: { app: clover }
 data:
   NODE_ENV: "production"
+  # 18.09.2026: pods otherwise run in UTC, 3 hours behind Turkey. Correctness
+  # doesn't depend on this (schedules are stored and compared as absolute
+  # instants, dates are formatted with an explicit Europe/Istanbul zone), but
+  # it keeps log timestamps and any stray local-time formatting in Turkish time.
+  # Node honours TZ on node:24-alpine via its bundled ICU (verified).
+  TZ: "Europe/Istanbul"
   ENVIRONMENT: "test"
 
   SITE_URL: "https://vodafonepaycomtr-vepas-ai-am.apps.tst-vcloud.vpara.local"

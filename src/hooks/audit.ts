@@ -3,7 +3,12 @@ import type { AfterErrorHook, CollectionAfterChangeHook, CollectionAfterDeleteHo
 
 function actorOf(req: PayloadRequest): { email: string; role?: string } {
   const user = req.user as { email?: string; role?: string } | undefined;
-  return { email: user?.email ?? "unknown", role: user?.role };
+  if (user?.email) return { email: user.email, role: user.role };
+  // A system job acting without a user (e.g. the scheduled campaign publisher)
+  // names itself instead of showing up as "unknown".
+  const system = (req.context as { auditActor?: { email: string; role?: string } } | undefined)?.auditActor;
+  if (system) return system;
+  return { email: "unknown", role: user?.role };
 }
 
 /**

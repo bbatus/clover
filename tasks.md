@@ -2262,3 +2262,42 @@ menüsünden 3 ürün düşer.
 - Admin'de doğrulandı: SEO Dosyaları ekranı, iki editör, açıklamalar, sidebar ikonları; `Disallow: /` ile yayınlama denemesi 400 döndü.
 - Testler 589/589, tsc 0 hata.
 - ⚠️ **Deploy öncesi:** canlı DB'de `clover-schema-migration-17-09-to-18-09-2026.sql` çalıştırılmalı (DBeaver, File → Open File, Alt+X). Clover ve site birlikte deploy edilmeli; yeni site `/globals/seo-files`'ı okuyor. Okuyamazsa varsayılan dosyaları sunduğu için kırılmaz.
+
+## 59. Kampanyalarda zamanlanmış yayın + İstanbul saat dilimi (18.09.2026)
+
+- **Akış:**
+  - Maker, kampanyanın yan panelindeki "İleri Tarihte Yayınla (opsiyonel)" alanına tarih ve saat seçip "Taslağı Onaya Gönder" der. Butonun yanında "Onay bekliyor — {tarih} (İstanbul) için planlandı" yazar.
+  - Checker aynı ekranda "Onayla ve Planla" görür. Onay penceresi önizlemeyle birlikte "{tarih} (İstanbul saati) tarihinde kendiliğinden yayına girer" der.
+  - Onaydan sonra kampanya TASLAK kalır; `reviewStatus = "scheduled"`, onaylayan kişi ve onay zamanı damgalanır. Checker "Planı İptal Et" ile planı geri çekebilir.
+  - Zamanı gelince CMS'in kendisi yayınlar. Denetim kaydında aktör "sistem (zamanlanmış yayın)" olarak görünür; site önbelleği her zamanki revalidate ile anında tazelenir.
+- **Kurallar (sunucuda, `src/lib/campaignSchedule.ts` → `manageCampaignSchedule`):**
+  - Planı sadece yayınlayabilen bir rol onaylayabilir (Growth Maker ancak aktif yetki devriyle).
+  - Geçmiş bir zaman ya da tarihsiz onay reddedilir.
+  - Onaydan sonraki her içerik değişikliği (tarih dahil) onayı düşürür ve kaydı "İncelemede"ye çeker. Formun değişmeden yeniden gönderilmesi onayı düşürmez.
+  - Elle "Yayınla" planı geçersiz kılar.
+- **Zamanlayıcı (`startScheduledPublishing`, `payload.config` onInit):**
+  - 30 saniyede bir çalışır. Her tur `pg_try_advisory_lock` alır, böylece HPA ile çoğalmış pod'larda iş tek pod'da yapılır.
+  - Pod yayın zamanında kapalıysa kampanya açılışın ilk turunda yayınlanır (test edildi).
+  - Testlerde, `next build` sırasında ve `SCHEDULED_PUBLISH_DISABLED=true` ile çalışmaz.
+  - Payload'ın kendi `schedulePublish`'i bilinçli olarak kullanılmadı: işi planlayan kullanıcı adına yayınlıyor ve maker/checker kuralımızı bilmiyor.
+- **Saat dilimi:**
+  - Zaman timestamptz olarak (UTC anı) saklanır. Panelde iki tarih alanı da Payload `timezone` ile Europe/Istanbul'a sabit (`admin.timezones`).
+  - Tüm karşılaştırmalar anlar arasında yapılır; gösterim `src/lib/istanbulTime.ts` ile açıkça İstanbul'dur.
+  - Configmap'e `TZ: "Europe/Istanbul"` eklendi; bu yalnızca log ve güvenlik amaçlı, doğruluk buna bağlı değil.
+- **Ek düzeltmeler:**
+  - `denyUnauthenticatedDraftRead` sunucu içi `overrideAccess: true` Local API okumalarını artık engellemiyor (REST hep `overrideAccess: false` ile gelir). Test eklendi.
+  - Denetim kaydında kullanıcısız sistem işleri `context.auditActor` ile adlandırılıyor.
+- **Uçtan uca doğrulama (Clover dev sunucusu `TZ=UTC` ile, OCP taklidi):**
+  - Maker 18.09 17:30 seçti. DB'de `14:30:00+00` olarak saklandı.
+  - Checker onayladı. Kampanya 17:30'da yayına girdi, sitede liste ve detayda göründü.
+  - İkinci kampanya 17:37'de sunucu yeniden başlatılmadan yayına girdi.
+  - 01.10.2026 00:00 İstanbul planı DB'de 30.09 21:00 UTC olarak saklandı. Tarayıcı Berlin saatindeyken panel yine 00:00 gösterdi.
+  - REST ile olumsuz senaryolar: Maker onaylayamaz, geçmiş tarih reddedilir, onay sonrası değişiklik onayı düşürür, iptal çalışır.
+  - İlk denemede zamanlayıcı "izniniz yok" verdi. Sebebi test sırasında yapılan `git stash`'in dev sunucusuna eski kodu yüklemesiydi (yalnız geliştirme ortamı). Temiz başlatmada ve ikinci planlamada sorun yok.
+- Testler 605/605 (TZ=UTC ile), tsc 0 hata.
+- **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` dosyasına 12. bölüm eklendi. Bu dosya henüz canlıda çalıştırılmadı, bu yüzden aynı dosyaya eklendi.
+  - İçerik: campaigns ve `_campaigns_v`'ye 5'er kolon, 4 saat dilimi enum'u, review_status enum'larına 'scheduled', 2 index, 2 FK. Veri değişikliği yok.
+  - Tekrar çalıştırılabilir, DO bloklarında boş satır yok. PostgreSQL 12+ gerekir (ADD VALUE).
+  - Doğrulama: zincir boş DB'ye yüklendi, `pg_dump --schema-only` dev DB ile birebir aynı (12.185 satır).
+- Yerel test verisi: "Zamanlama Testi Kampanyası" (id 25) ve "Zamanlama Negatif Testi" (id 26) yayında, "Ekim Başı Kampanyası" (id 27) 01.10.2026 00:00'a planlı. İstenirse panelden silinebilir.
+- ⚠️ **Deploy öncesi:** canlı DB'de `clover-schema-migration-17-09-to-18-09-2026.sql` (11. ve 12. bölüm) çalıştırılmalı. İki configmap'teki `TZ` değişikliği için configmap'ler OCP'ye uygulanmalı (`oc apply -f k8s/configmap.yaml`, iki repoda da). Clover ve site birlikte deploy edilmeli.

@@ -11,6 +11,7 @@ import { CATEGORY_SCOPES } from "@/collections/Categories";
 import { assignFooterOrder, FOOTER_ORDER_FIELD_DESCRIPTION, FOOTER_ORDER_MAX } from "@/hooks/ordering";
 import { autoSlug } from "@/hooks/autoSlug";
 import { seoKeywordsField } from "@/lib/seoFields";
+import { manageCampaignSchedule, SCHEDULE_TIME_ZONE } from "@/lib/campaignSchedule";
 
 /**
  * RFP feedback 3.11: a Growth Maker editing (resubmitting) a draft that was
@@ -288,8 +289,58 @@ export const Campaigns: CollectionConfig = {
       options: [
         { label: { tr: "İncelemede", en: "Pending review" }, value: "pending" },
         { label: { tr: "Reddedildi", en: "Rejected" }, value: "rejected" },
+        // 18.09.2026: approved for a future publish time — see lib/campaignSchedule.ts.
+        { label: { tr: "Onaylandı — yayın planlandı", en: "Approved — publish scheduled" }, value: "scheduled" },
       ],
       admin: { position: "sidebar", readOnly: true },
+    },
+    {
+      // 18.09.2026 kullanıcı: "Maker onaya gönderirken ileri tarihte yayınla
+      // derse tarih ve saat seçip onaya göndersin; Checker onaylarsa o tarihte
+      // çıksın." Stored as an absolute instant; the picker is pinned to
+      // Istanbul time so neither the editor's browser nor the pod's own TZ can
+      // shift it (see lib/campaignSchedule.ts).
+      name: "scheduledPublishAt",
+      type: "date",
+      label: { tr: "İleri Tarihte Yayınla (opsiyonel)", en: "Publish Later (optional)" },
+      timezone: {
+        defaultTimezone: SCHEDULE_TIME_ZONE,
+        supportedTimezones: [{ label: "İstanbul (UTC+3)", value: SCHEDULE_TIME_ZONE }],
+        required: true,
+      },
+      admin: {
+        position: "sidebar",
+        date: { pickerAppearance: "dayAndTime", timeIntervals: 15, displayFormat: "dd.MM.yyyy HH:mm" },
+        condition: (data) => data?._status !== "published" || Boolean(data?.scheduledPublishAt),
+        description: {
+          tr: "Boş bırakılırsa kampanya Checker onayladığı anda yayına girer. Tarih ve saat seçilirse Checker onayından sonra o anda (İstanbul saati) kendiliğinden yayına girer. Onaydan sonra kampanyada yapılan her değişiklik — tarih dahil — onayı düşürür ve yeniden onay gerekir.",
+          en: "Left empty, the campaign goes live the moment a Checker approves it. With a date and time, it goes live by itself at that moment (Istanbul time) once a Checker approves. Any change after approval — including the date — drops the approval and needs a new one.",
+        },
+      },
+    },
+    {
+      name: "scheduleApprovedBy",
+      type: "relationship",
+      relationTo: "users",
+      label: { tr: "Planı Onaylayan", en: "Schedule Approved By" },
+      admin: { position: "sidebar", readOnly: true, condition: (data) => data?.reviewStatus === "scheduled" },
+    },
+    {
+      name: "scheduleApprovedAt",
+      type: "date",
+      label: { tr: "Plan Onay Zamanı", en: "Schedule Approved At" },
+      // Pinned to Istanbul like scheduledPublishAt, so an editor abroad (or a
+      // laptop set to another zone) reads the same time the audit log shows.
+      timezone: {
+        defaultTimezone: SCHEDULE_TIME_ZONE,
+        supportedTimezones: [{ label: "İstanbul (UTC+3)", value: SCHEDULE_TIME_ZONE }],
+      },
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        date: { pickerAppearance: "dayAndTime", displayFormat: "dd.MM.yyyy HH:mm" },
+        condition: (data) => data?.reviewStatus === "scheduled",
+      },
     },
     {
       name: "rejectionReason",
@@ -617,7 +668,7 @@ export const Campaigns: CollectionConfig = {
   hooks: {
     beforeOperation: [denyUnauthenticatedDraftRead],
     beforeValidate: [autoSlug("campaigns", "title")],
-    beforeChange: [setOwnerOnCreate("createdBy"), manageReviewCycle, guardPublishedEdit, denyMakerPublish, assignFooterOrder("campaigns")],
+    beforeChange: [setOwnerOnCreate("createdBy"), manageReviewCycle, guardPublishedEdit, denyMakerPublish, manageCampaignSchedule, assignFooterOrder("campaigns")],
     afterChange: [revalidateCampaignPaths, auditAfterChange("campaigns"), auditRejection],
     afterDelete: [revalidateCampaignPathsOnDelete, auditAfterDelete("campaigns")],
   },

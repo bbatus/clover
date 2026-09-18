@@ -1121,6 +1121,23 @@ a {
   border-radius: var(--style-radius-s);
   white-space: nowrap;
 }
+/* 18.09.2026 — approved for a future publish time */
+/* Explicit green: this admin theme maps --theme-success-* to the brand red. */
+.rapb-awaiting--scheduled {
+  color: #17603a;
+  border: 1px solid #9fd3b3;
+  background: #e8f5ed;
+}
+html[data-theme="dark"] .rapb-awaiting--scheduled {
+  color: #8fd9ab;
+  border-color: #2f6b47;
+  background: #16301f;
+}
+.rapb-schedule-error {
+  margin: 0.25rem 0 0;
+  color: var(--theme-error-600);
+  font-size: 0.85rem;
+}
 
 .rapb-modal-overlay {
   position: fixed;

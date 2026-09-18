@@ -7,6 +7,7 @@ import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
 import { useIsActiveCheckerDelegate } from "./useIsActiveCheckerDelegate";
 import { ROLES } from "@/access/roleConstants";
+import { formatIstanbul } from "@/lib/istanbulTime";
 
 /**
  * Two RFP feedback items land here:
@@ -37,6 +38,16 @@ function useLockBodyScroll(locked: boolean): void {
       document.body.style.overflow = previous;
     };
   }, [locked]);
+}
+
+/** Current time, refreshed on an interval — keeps render pure while a chosen time slips into the past. */
+function useNow(intervalMs: number): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(timer);
+  }, [intervalMs]);
+  return now;
 }
 
 export default function RoleAwarePublishButton() {
@@ -79,6 +90,15 @@ export default function RoleAwarePublishButton() {
     forceConfirm: tt("roleAwarePublishButton.forceConfirm"),
     forceRecommended: tt("roleAwarePublishButton.forceRecommended"),
     submitFailed: tt("roleAwarePublishButton.submitFailed"),
+    scheduleApprove: tt("roleAwarePublishButton.scheduleApprove"),
+    scheduleHeading: tt("roleAwarePublishButton.scheduleHeading"),
+    scheduleBody: tt("roleAwarePublishButton.scheduleBody"),
+    scheduleConfirm: tt("roleAwarePublishButton.scheduleConfirm"),
+    scheduling: tt("roleAwarePublishButton.scheduling"),
+    scheduledNotice: tt("roleAwarePublishButton.scheduledNotice"),
+    cancelSchedule: tt("roleAwarePublishButton.cancelSchedule"),
+    cancellingSchedule: tt("roleAwarePublishButton.cancellingSchedule"),
+    awaitingScheduled: tt("roleAwarePublishButton.awaitingScheduled"),
   };
   const role = (user as { role?: string } | undefined)?.role;
   const userId = (user as { id?: string | number } | undefined)?.id;
@@ -107,6 +127,14 @@ export default function RoleAwarePublishButton() {
   // is). `roleAwarePublishButton.unpublishRequested` was written for exactly
   // this and had never been wired to anything.
   const unpublishRequest = useFormFields(([fields]) => fields?.unpublishRequest?.value as string | undefined);
+  // 18.09.2026 — scheduled publish (lib/campaignSchedule.ts). Read from the
+  // form so the buttons follow the date the editor has just picked.
+  const reviewStatus = useFormFields(([fields]) => fields?.reviewStatus?.value as string | undefined);
+  const scheduledPublishAt = useFormFields(([fields]) => fields?.scheduledPublishAt?.value as string | undefined);
+  const now = useNow(30_000);
+  const scheduleIsFuture = Boolean(scheduledPublishAt) && new Date(scheduledPublishAt as string).getTime() > now;
+  const scheduleLabel = scheduledPublishAt ? formatIstanbul(scheduledPublishAt) : "";
+  const withDate = (text: string) => text.replace("{date}", scheduleLabel);
   const { code: localeCode } = useLocale();
   const { config } = useConfig();
 
@@ -124,6 +152,8 @@ export default function RoleAwarePublishButton() {
   const [showForceConfirm, setShowForceConfirm] = useState(false);
   const [forceAck, setForceAck] = useState(false);
   const [forcing, setForcing] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   // RFP feedback: the confirm-before-publish modal's iframe was stuck at its
   // 420px minHeight (a flex:1 child can't grow inside a column whose own
@@ -254,7 +284,39 @@ export default function RoleAwarePublishButton() {
     [collectionSlug, config.routes.api, id, localeCode, submit, userId]
   );
 
+  /**
+   * Approve for later: saves the draft (never publishes) with reviewStatus
+   * "scheduled"; the server stamps the approver and the scheduler publishes
+   * it at `scheduledPublishAt`. `cancel` sends it back to plain review.
+   */
+  const saveReviewStatus = useCallback(
+    async (next: "scheduled" | "pending") => {
+      setScheduling(true);
+      setScheduleError(null);
+      try {
+        const params = new URLSearchParams({ depth: "0", locale: localeCode || "", draft: "true" }).toString();
+        const idSegment = id ? `/${id}` : "";
+        const action = formatAdminURL({ apiRoute: config.routes.api, path: `/${collectionSlug}${idSegment}?${params}` as `/${string}` });
+        const result = await submit({ action, method: "PATCH", overrides: { _status: "draft", reviewStatus: next } });
+        if (result && typeof window !== "undefined") {
+          window.location.reload();
+          return;
+        }
+        setScheduleError(t.submitFailed);
+      } finally {
+        setScheduling(false);
+      }
+    },
+    [collectionSlug, config.routes.api, id, localeCode, submit, t.submitFailed]
+  );
+
   if (role === ROLES.GROWTH_MAKER && !isActiveDelegate) {
+    if (!hasPublishedDoc && reviewStatus === "scheduled") {
+      return <div className="rapb-awaiting rapb-awaiting--scheduled">{withDate(t.scheduledNotice)}</div>;
+    }
+    if (!hasPublishedDoc && scheduleIsFuture) {
+      return <div className="rapb-awaiting">{withDate(t.awaitingScheduled)}</div>;
+    }
     if (hasPublishedDoc) {
       if (unpublishRequest === "pending") {
         return <div className="rapb-awaiting">{t.unpublishRequested}</div>;
@@ -304,12 +366,32 @@ export default function RoleAwarePublishButton() {
     );
   }
 
+  // Approved for later and untouched since: say when it goes live, offer to call it off.
+  if (!hasPublishedDoc && reviewStatus === "scheduled" && !modified) {
+    return (
+      <div className="vf-live-actions">
+        <span className="rapb-awaiting rapb-awaiting--scheduled">{withDate(t.scheduledNotice)}</span>
+        <button
+          type="button"
+          className={`btn btn--style-secondary btn--size-medium${scheduling ? " btn--disabled" : ""}`}
+          disabled={scheduling}
+          onClick={() => void saveReviewStatus("pending")}
+        >
+          <span className="btn__content">
+            <span className="btn__label">{scheduling ? t.cancellingSchedule : t.cancelSchedule}</span>
+          </span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       <PublishActionsBar
         t={t}
         showRejectButton={!hasPublishedDoc}
         canPublish={canPublish}
+        publishLabel={!hasPublishedDoc && scheduleIsFuture ? t.scheduleApprove : undefined}
         onReject={() => setShowRejectForm(true)}
         onPublish={() => setConfirming(true)}
       />
@@ -334,9 +416,17 @@ export default function RoleAwarePublishButton() {
         <ConfirmPublishModal
           t={t}
           previewHref={previewHref}
-          publishing={publishing}
-          onCancel={() => setConfirming(false)}
-          onConfirm={doPublish}
+          publishing={publishing || scheduling}
+          schedule={
+            !hasPublishedDoc && scheduleIsFuture
+              ? { heading: t.scheduleHeading, body: withDate(t.scheduleBody), confirm: withDate(t.scheduleConfirm), busy: t.scheduling, error: scheduleError }
+              : undefined
+          }
+          onCancel={() => {
+            setConfirming(false);
+            setScheduleError(null);
+          }}
+          onConfirm={!hasPublishedDoc && scheduleIsFuture ? () => void saveReviewStatus("scheduled") : doPublish}
         />
       )}
     </>
@@ -378,7 +468,16 @@ type ButtonStrings = Record<
   | "forceAck"
   | "forceConfirm"
   | "forceRecommended"
-  | "submitFailed",
+  | "submitFailed"
+  | "scheduleApprove"
+  | "scheduleHeading"
+  | "scheduleBody"
+  | "scheduleConfirm"
+  | "scheduling"
+  | "scheduledNotice"
+  | "cancelSchedule"
+  | "cancellingSchedule"
+  | "awaitingScheduled",
   string
 >;
 
@@ -386,12 +485,14 @@ function PublishActionsBar({
   t,
   showRejectButton,
   canPublish,
+  publishLabel,
   onReject,
   onPublish,
 }: {
   t: ButtonStrings;
   showRejectButton: boolean;
   canPublish: boolean;
+  publishLabel?: string;
   onReject: () => void;
   onPublish: () => void;
 }) {
@@ -412,7 +513,7 @@ function PublishActionsBar({
         onClick={onPublish}
       >
         <span className="btn__content">
-          <span className="btn__label">{t.publish}</span>
+          <span className="btn__label">{publishLabel ?? t.publish}</span>
         </span>
       </button>
     </div>
@@ -636,12 +737,15 @@ function ConfirmPublishModal({
   t,
   previewHref,
   publishing,
+  schedule,
   onCancel,
   onConfirm,
 }: {
   t: ButtonStrings;
   previewHref: string | null | undefined;
   publishing: boolean;
+  /** Set when approving a scheduled publish: same preview, different wording and outcome. */
+  schedule?: { heading: string; body: string; confirm: string; busy: string; error: string | null };
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -658,8 +762,9 @@ function ConfirmPublishModal({
     <div className="rapb-modal-overlay rapb-modal-overlay--confirm">
       <div className="rapb-modal rapb-modal--confirm">
         <div className="rapb-confirm-head">
-          <p className="rapb-confirm-heading">{t.heading}</p>
-          <p className="rapb-confirm-body">{t.body}</p>
+          <p className="rapb-confirm-heading">{schedule?.heading ?? t.heading}</p>
+          <p className="rapb-confirm-body">{schedule?.body ?? t.body}</p>
+          {schedule?.error && <p className="rapb-schedule-error">{schedule.error}</p>}
           {previewHref && (
             <fieldset className="rapb-preview-toggle" aria-label={t.previewWidthGroup}>
               <button
@@ -703,7 +808,9 @@ function ConfirmPublishModal({
             onClick={onConfirm}
           >
             <span className="btn__content">
-              <span className="btn__label">{publishing ? t.publishing : t.confirm}</span>
+              <span className="btn__label">
+                {publishing ? (schedule?.busy ?? t.publishing) : (schedule?.confirm ?? t.confirm)}
+              </span>
             </span>
           </button>
         </div>
