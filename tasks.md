@@ -2604,3 +2604,18 @@ Prompt 3 / madde 6. `e2e/` (5 test, `npm run test:e2e`, ayrıntı `e2e/README.md
   - **`CMS_AUTO_LOGIN` pod'da açılabiliyordu (R19).** Bu bayrakla her istek (sitenin okumaları dahil) admin sayılıyor ve taslaklar sitede görünüyor. `src/env.ts` artık bir Kubernetes/OpenShift pod'unda bu bayrakla açılmayı reddediyor (test eklendi).
 - **Bağımlılıklar:** `@playwright/test` 1.63.0 (dev), `pg` 8.20.0 (dev; Payload'ın zaten kullandığı sürüm). E2E klasörü ve çıktıları `.dockerignore`'da; imaja girmiyor.
 - Birim testleri: 727/727. tsc 0, eslint 0. Şema değişikliği yok.
+
+## 71. Docker yeniden kurulum + Trivy güvenlik güncellemesi (19.09.2026)
+
+- **Docker:** Kullanıcı Docker Desktop'ı yeniden başlattı; registry erişimi geldi.
+  - İlk kurulum "no space left on device" ile düştü. Yalnız build önbelleği ve sahipsiz eski node imajı temizlendi (10 GB); diğer projelerin imaj ve volume'larına dokunulmadı.
+  - İki imaj sırayla kuruldu; container'lar healthy.
+- **Trivy** (bağımlılık değiştiği için, AGENTS.md kuralı): yeni yayınlanmış açıklar çıktı, bizim değişikliklerimizden değil.
+  - **Kritik:** Next.js CVE-2026-75604, kimlik doğrulamasız uzaktan kod çalıştırma (16.3.0).
+  - **Yüksek:** sharp, fast-uri, js-yaml.
+  - **Düzeltme:** `next` ^16.3.3 (16.3.5 kuruldu), `sharp` ^0.35.4; `fast-uri` ^3.1.6 ve `js-yaml` ^4.3.2 override ile.
+  - **Sonuç:** imaj taramaları 0. Lockfile'da yalnız Payload CVE-2026-11779 (orta, yamasız) kaldı; bizde etkisiz, CLAUDE.md R20.
+- **Container üzerinde kontrol** (production modu, otomatik giriş kapalı):
+  - Güvenlik başlıkları, istek kimliği ve JSON log çalışıyor; zamanlayıcı başladı; çerez bandı çıkıyor.
+  - Taslak kampanya sitede 404, anonim API okuması 0 kayıt. R19'daki "taslak görünüyor" durumunun yalnız yerel otomatik girişe özgü olduğu doğrulandı.
+- Testler: 727/727, tsc 0, eslint 0. Şema değişikliği yok.
