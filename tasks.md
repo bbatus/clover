@@ -2523,3 +2523,5 @@ Kullanıcının seçtiği "2 · Vodafone yükleme & UX dili" isteği, bir deği�
   - Toplu yayın penceresinde çift tıkta tek istek ve "2 kayıt tek tek işleniyor · 2 sn" görüldü. İstek sayfada tutuldu, sunucuya gitmedi; veri değişmedi.
   - Önizleme panelinde çift tıkta tek istek ve "Oluşturuluyor…" görüldü.
 - **DB migration:** yok, şema değişmedi.
+
+**19.09.2026 — #67'nin site yarısı geri alındı** (`vodafonepaycomtr-site` revert commit'i, ayrıntı: o repodaki #67-site). Kural: klon site canlı siteyle birebir kalır; yükleme/erişilebilirlik gibi UX iyileştirmeleri yalnız CMS'e yapılır. CMS tarafı (#67) olduğu gibi duruyor. R17 kapatıldı.
