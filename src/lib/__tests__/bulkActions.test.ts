@@ -71,10 +71,26 @@ describe("POST /api/bulk-actions — input", () => {
   });
 });
 
+describe("POST /api/bulk-actions — review statement (19.09.2026)", () => {
+  it("refuses a bulk publish unless the caller states every record was reviewed", async () => {
+    for (const reviewConfirmed of [undefined, false, "true"]) {
+      const { req, payload } = makeReq({ body: { collection: "blog-posts", action: "publish", ids: [1], reviewConfirmed } });
+      const { status } = await call(req);
+      expect(status).toBe(400);
+      expect(payload.update).not.toHaveBeenCalled();
+    }
+  });
+
+  it("does not ask for it on unpublish", async () => {
+    const { req } = makeReq({ body: { collection: "blog-posts", action: "unpublish", ids: [1] } });
+    expect((await call(req)).status).not.toBe(400);
+  });
+});
+
 describe("POST /api/bulk-actions — per record", () => {
   it("saves each record as the real user, without overriding access or locks, and keeps going after a failure", async () => {
     const { req, payload } = makeReq({
-      body: { collection: "blog-posts", action: "publish", ids: [1, 2, 3, "2"] },
+      body: { collection: "blog-posts", action: "publish", ids: [1, 2, 3, "2"], reviewConfirmed: true },
       docs: { 1: { id: 1, title: "Bir", _status: "draft" }, 2: { id: 2, title: "İki", _status: "draft" }, 3: { id: 3, title: "Üç", _status: "published" } },
       failOn: { 1: Object.assign(new Error("Bu işlemi gerçekleştirmek için izniniz yok."), { status: 403, name: "Forbidden" }) },
     });
@@ -101,7 +117,7 @@ describe("POST /api/bulk-actions — per record", () => {
 
   it("publishes a live record's waiting edit, and names it by its newest title", async () => {
     const { req, payload } = makeReq({
-      body: { collection: "blog-posts", action: "publish", ids: [5] },
+      body: { collection: "blog-posts", action: "publish", ids: [5], reviewConfirmed: true },
       docs: { 5: { id: 5, title: "Eski", _status: "published" } },
       drafts: { 5: { id: 5, title: "Yeni", _status: "draft" } },
     });
@@ -144,7 +160,7 @@ describe("POST /api/bulk-actions — per record", () => {
 describe("POST /api/bulk-actions — audit", () => {
   it("writes one bulk summary listing every record, plus a denied entry for each refusal", async () => {
     const { req } = makeReq({
-      body: { collection: "blog-posts", action: "publish", ids: [1, 2] },
+      body: { collection: "blog-posts", action: "publish", ids: [1, 2], reviewConfirmed: true },
       docs: { 1: { id: 1, title: "Bir", _status: "draft" }, 2: { id: 2, title: "İki", _status: "draft" } },
       failOn: { 2: Object.assign(new Error("İzniniz yok."), { status: 403 }) },
     });
@@ -154,7 +170,9 @@ describe("POST /api/bulk-actions — audit", () => {
     expect(denied).toHaveLength(1);
     expect(denied[0]).toMatchObject({ collectionSlug: "blog-posts", documentId: "2" });
     const summary = entries.find((e) => e.action === "bulk");
-    expect(summary?.summary).toBe("blog-posts: toplu yayınlama — 2 kayıt: 1 başarılı, 0 atlandı, 1 başarısız");
+    expect(summary?.summary).toBe(
+      "blog-posts: toplu yayınlama — 2 kayıt: 1 başarılı, 0 atlandı, 1 başarısız — kullanıcı seçili kayıtların her birini incelediğini ve yayına alınmasını onayladığını beyan etti"
+    );
     expect(summary?.changes).toEqual([
       { field: "1 — Bir", before: "taslak", after: "başarılı" },
       { field: "2 — İki", before: "taslak", after: "başarısız: İzniniz yok." },

@@ -2460,3 +2460,13 @@ menüsünden 3 ürün düşer.
   - Test kayıtlarım (kampanya 31–42, blog 15, 404 satırı) toplu işlemle / elle silindi. Dev kullanıcının rolü değiştirilmedi.
 - Testler 677/677 (15 yeni), tsc 0 hata, eslint 0 hata (önceden var olan 5 uyarı aynı).
 - **DB migration:** yok. Şema değişmedi; `clover-schema-migration-17-09-to-18-09-2026.sql` olduğu gibi geçerli.
+
+## 65. Toplu yayında "her birini inceledim" beyanı + açık riskler listesi (19.09.2026)
+
+- Kullanıcı kararı (#64'teki 3. karar maddesi): kampanyalarda toplu "Yayınla" KAPATILMADI, çünkü hepsi onaylanıp canlıya alınacak. Onun yerine ikinci bir soru eklendi.
+- Toplu yayınlama onay penceresinde "Seçili N kaydın her birini incelediğimi ve yayına alınmasını onayladığımı beyan ederim." kutucuğu var. İşaretlenmeden "Evet, devam et" pasif. Pencere her açılışta kutucuk sıfırlanıyor. Tüm koleksiyonlar için geçerli, tr/en.
+- Sunucu da istiyor: `POST /api/bulk-actions` `action: "publish"` için `reviewConfirmed: true` olmadan 400 dönüyor. Doğrudan API ile beyan atlanamıyor.
+- Beyan, toplu işlem özet denetim satırına yazılıyor: "… — kullanıcı seçili kayıtların her birini incelediğini ve yayına alınmasını onayladığını beyan etti".
+- Yayından kaldırma, talep ve taslak silme için beyan istenmiyor.
+- Testler: 679/679 (yeni: beyansız yayın 400, yayından kaldırmada beyan istenmez, pencerede kutucuk işaretlenmeden buton pasif); tsc 0 hata, eslint 0 hata. Growth Checker rolüyle 3 kampanya seçilip pencerenin ekran görüntüsü alındı (işaretsiz: buton pasif; işaretli: aktif). İşlem çalıştırılmadı.
+- CLAUDE.md'ye "Açık riskler ve bekleyen kararlar" tablosu eklendi (R1–R13), #64'ün karar maddeleri ve süreç açıkları dahil. Şema değişikliği yok.

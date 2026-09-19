@@ -112,11 +112,15 @@ describe("BulkActionsBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Seçilenleri yayınla" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("3 kayıt yayınlansın mı?");
     expect(screen.getByRole("dialog")).toHaveTextContent("planlanmış ve reddedilmiş kampanyalar atlanır");
+    // 19.09.2026: publishing needs the explicit "I reviewed each one" statement first.
+    expect(screen.getByRole("button", { name: "Evet, devam et" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: /3 kaydın her birini incelediğimi/ }));
+    expect(screen.getByRole("button", { name: "Evet, devam et" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Evet, devam et" }));
 
     expect(await screen.findByText("Toplu yayınlama sonucu")).toBeInTheDocument();
     const call = fetchMock.mock.calls.find(([url]) => url === "/api/bulk-actions");
-    expect(JSON.parse(call![1].body)).toEqual({ collection: "campaigns", action: "publish", ids: ["1", "2", "3"] });
+    expect(JSON.parse(call![1].body)).toEqual({ collection: "campaigns", action: "publish", ids: ["1", "2", "3"], reviewConfirmed: true });
     expect(screen.getByText("1 başarılı · 1 atlandı · 1 başarısız")).toBeInTheDocument();
     expect(screen.getByText("Lütfen geçersiz alanları düzeltin: Görsel")).toBeInTheDocument();
     expect(screen.getByText("01.10.2026 00:00 (İstanbul) için planlanmış.")).toBeInTheDocument();
@@ -135,6 +139,7 @@ describe("BulkActionsBar", () => {
     );
     render(<BulkActionsBar collection="campaigns" />);
     fireEvent.click(screen.getByRole("button", { name: "Seçilenleri yayınla" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /her birini incelediğimi/ }));
     fireEvent.click(screen.getByRole("button", { name: "Evet, devam et" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Tek seferde en fazla 100 kayıt işlenebilir.");
   });

@@ -59,6 +59,8 @@ const STRINGS = {
     } satisfies Record<BulkAction, string>,
     campaignPublishNote: "Belirli bir tarihe planlanmış ve reddedilmiş kampanyalar atlanır.",
     growthMakerDeleteNote: "Yalnızca kendi oluşturduğunuz taslaklar silinir.",
+    // 19.09.2026 — second, explicit statement before a bulk publish (also required by the server).
+    reviewAck: (n: number) => `Seçili ${n} kaydın her birini incelediğimi ve yayına alınmasını onayladığımı beyan ederim.`,
     confirm: "Evet, devam et",
     cancel: "Vazgeç",
     running: "İşleniyor…",
@@ -100,6 +102,7 @@ const STRINGS = {
     } satisfies Record<BulkAction, string>,
     campaignPublishNote: "Campaigns scheduled for a specific time, and rejected ones, are skipped.",
     growthMakerDeleteNote: "Only drafts you created are deleted.",
+    reviewAck: (n: number) => `I confirm I have reviewed each of the ${n} selected records and approve publishing them.`,
     confirm: "Yes, continue",
     cancel: "Cancel",
     running: "Working…",
@@ -148,6 +151,7 @@ export default function BulkActionsBar({ collection }: Props) {
   const clientCollection = getEntityConfig({ collectionSlug: collection });
 
   const [confirming, setConfirming] = useState<BulkAction | null>(null);
+  const [reviewAck, setReviewAck] = useState(false);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<BulkResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -198,7 +202,7 @@ export default function BulkActionsBar({ collection }: Props) {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ collection, action, ids }),
+          body: JSON.stringify({ collection, action, ids, ...(action === "publish" ? { reviewConfirmed: true } : {}) }),
         });
         const body = (await res.json().catch(() => null)) as unknown;
         if (!res.ok) {
@@ -242,7 +246,10 @@ export default function BulkActionsBar({ collection }: Props) {
                 className={action === "deleteDraft" ? "bulk-danger" : undefined}
                 size="small"
                 disabled={running}
-                onClick={() => setConfirming(action)}
+                onClick={() => {
+                  setReviewAck(false);
+                  setConfirming(action);
+                }}
               >
                 {t.actions[action]}
               </Button>
@@ -312,6 +319,12 @@ export default function BulkActionsBar({ collection }: Props) {
                 {note}
               </p>
             ))}
+            {confirming === "publish" && (
+              <label className="rapb-ack" htmlFor="bulk-review-ack">
+                <input id="bulk-review-ack" type="checkbox" checked={reviewAck} onChange={(e) => setReviewAck(e.target.checked)} />
+                <span>{t.reviewAck(selectedCount)}</span>
+              </label>
+            )}
             <div className="rapb-modal-actions">
               <Button buttonStyle="secondary" size="small" disabled={running} onClick={() => setConfirming(null)}>
                 {t.cancel}
@@ -319,7 +332,7 @@ export default function BulkActionsBar({ collection }: Props) {
               <Button
                 buttonStyle={confirming === "deleteDraft" ? "error" : "primary"}
                 size="small"
-                disabled={running}
+                disabled={running || (confirming === "publish" && !reviewAck)}
                 onClick={() => void run(confirming)}
               >
                 {running ? t.running : t.confirm}

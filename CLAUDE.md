@@ -21,6 +21,26 @@ Kullanıcıyla konuşuldu, "daha sonranın konusu ama aklımızda tutalım". Bir
   3. ✅ **Kırık link raporu** (YAPILDI 18.09.2026, tasks.md #62): site içindeki kırık linkler ve 404 alan adresler, /admin/broken-links. 301 yönetimi gelince 404 satırından yönlendirme oluşturma bağlanacak.
   4. ✅ **Toplu işlemler** (YAPILDI 18.09.2026, tasks.md #63): liste ekranında seçili kayıtları birlikte yayınlama / yayından kaldırma / taslak silme; Growth Maker kampanyalarda toplu "yayından kaldırma talebi". Maker→checker kuralları her kayıt için ayrı ayrı sunucuda uygulanıyor, sonuç kayıt kayıt nedeniyle gösteriliyor, denetim kaydına özet satırı düşüyor.
 
+## ⚠️ Açık riskler ve bekleyen kararlar (19.09.2026 itibarıyla)
+
+18.09.2026'daki beş işin production gözden geçirmesinden (tasks.md #64) ve sonrasından kalanlar. Bir madde kapatılınca buradan silinmeli ya da "KAPANDI (tarih, tasks.md #)" diye işaretlenmeli.
+
+| # | Risk / karar | Durum | Not |
+|---|---|---|---|
+| R1 | Editörlerin kendi "Önizle" linki `PREVIEW_SECRET`'ı URL'de taşıyor; bu sırla TÜM taslaklar okunabilir (tarayıcı geçmişi, proxy logları, ekran paylaşımı). | Açık — güvenlik | Öneri: editör başına kısa ömürlü imzalı anahtar (paylaşılabilir önizleme linkindeki gibi tek belgeye bağlı). |
+| R2 | OCP `k8s/networkpolicy.yaml` egress'i `{}` (sınırsız). Kırık link taramasındaki SSRF kodda kapatıldı (iç ağ adreslerine gidilmiyor) ama asıl koruma egress'i daraltmak. | Açık — altyapı | Ağ ekibiyle: CMS pod'u yalnız Postgres, MinIO, site Service'i ve gerekiyorsa dış HTTPS. |
+| R3 | Kırık link dış kontrolünde DNS rebinding ile kalan küçük SSRF açığı (ad çözümlemesi kontrolden sonra değişebilir). | Açık — düşük | Tam kapatmak için çözülen IP'ye sabitlenmiş bağlantı gerekir; R2 yapılırsa pratikte kapanır. |
+| R4 | Checker kayıtları tek tek önizlemeden toplu yayınlayabiliyor. | KARAR VERİLDİ 19.09.2026 (tasks.md #65) | Kullanıcı: toplu yayın kalsın. Kutucukla "her birini inceledim ve onaylıyorum" beyanı zorunlu; sunucu da istiyor, denetim kaydına yazılıyor. |
+| R5 | Growth Maker, Checker onayı almamış bir taslak için dışarıya önizleme linki üretebiliyor (tasarım gereği). | Karar bekliyor | Yalnız Checker'lar üretsin istenirse `ShareLinks.ts` create uç noktasında tek satırlık rol kontrolü. |
+| R6 | KVKK saklama süresi yok: `not_found_hits` (adres, geldiği sayfa), `share_links` (not alanı: kişi adı olabilir), toplu işlem denetim satırları. | Karar bekliyor — hukuk | Saklama süresi belirlenince periyodik silme işi (zamanlayıcıya eklenebilir). |
+| R7 | Önizleme linki görüntülenme sayısı Teams/Slack/WhatsApp link önizleme botlarıyla şişiyor. | Açık — düşük | Bot user-agent'ları sayılmayabilir; "kaç kez açıldı" kesin değildir. |
+| R8 | Site `/api/not-found` hız sınırları pod başına bellekte; HPA ile N pod = N kat sınır. | Açık — düşük | Satır sınırı ve eskiyen kayıt silme ayrıca koruyor. Gerekirse paylaşımlı sayaç (Postgres). |
+| R9 | Gece yarısı biten kampanya sitenin listesinde önbellek yüzünden 1 saate kadar görünmeye devam edebilir. | Açık — düşük | Zamanlayıcı İstanbul gece yarısında `campaigns` etiketini tazeleyebilir. |
+| R10 | Taslaklı 14 koleksiyonda Payload'ın toplu "Düzenle"si kaldırıldı; `?where=` ile toplu REST yazma artık 403. | Bilgi | Kodda kullanan yer yok; dışarıdan toplu yazan bir script varsa etkilenir. |
+| R11 | 18.09 işleri için SonarQube taraması yapılmadı (AGENTS.md "büyük değişiklik sonrası Sonar" kuralı). | Açık — süreç | Push'tan önce `docker compose -f ../vodafonepaycomtr/tools/sonarqube/docker-compose.yml up -d` + `SONAR_TOKEN=… scripts/sonar-scan.sh` (her iki repoda). Bağımlılık değişmediği için Trivy gerekmiyor. |
+| R12 | Bekleyen migration (`clover-schema-migration-17-09-to-18-09-2026.sql`, §11–§15) canlıda çalışmadan deploy edilirse ilgili ekranlar 500 verir; §15 olmadan toplu işlem özet denetim satırı yazılamaz. | Açık — deploy | Aşağıdaki "Bekleyen deploy adımları". |
+| R13 | Önceden bilinen, kapsam dışı bırakılanlar: gerçek LDAP girişi bağlı değil; içerik test→canlı taşıma yok; içerik çok dilli değil; SEO analitiği (GA4/GTM) yok. | Açık — yol haritası | RFP denklik sayfasında da listeli. |
+
 ## ⚠️ Bekleyen deploy adımları (canlı DB'de HENÜZ ÇALIŞTIRILMADI — 18.09.2026)
 
 Kullanıcı: "bu sessionda henüz deploy etmicem, geliştirmeler devam edecek." Canlıya çıkarken aşağıdakiler yapılmadan yeni imaj deploy edilmemeli, yoksa ilgili ekranlar "column does not exist" hatasıyla 500 döner. **Deploy'a kadar yapılan her yeni şema değişikliği AYNI dosyaya yeni bölüm olarak eklenmeli** ve bu liste güncellenmeli. Dosya canlıda çalıştırılınca bu bölüm "çalıştırıldı (tarih)" diye işaretlenir, sonraki değişiklikler yeni bir `clover-schema-migration-18-09-to-<tarih>.sql` dosyasında başlar.

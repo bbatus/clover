@@ -137,9 +137,9 @@ const truncate = (s: string, max = 300) => (s.length > max ? `${s.slice(0, max)}
 
 export async function runBulkAction(
   req: PayloadRequest,
-  input: { collection: CollectionSlug; action: BulkAction; ids: string[] }
+  input: { collection: CollectionSlug; action: BulkAction; ids: string[]; reviewConfirmed?: boolean }
 ): Promise<BulkItemResult[]> {
-  const { collection, action, ids } = input;
+  const { collection, action, ids, reviewConfirmed } = input;
   const role = (req.user as { role?: string } | undefined)?.role;
   const userId = req.user?.id;
   const useAsTitle = req.payload.collections[collection]?.config.admin?.useAsTitle;
@@ -188,7 +188,9 @@ export async function runBulkAction(
   await writeAuditLog(req, {
     action: "bulk",
     collectionSlug: collection,
-    summary: `${collection}: ${BULK_ACTION_AUDIT_LABEL[action]} — ${ids.length} kayıt: ${counts.ok} başarılı, ${counts.skipped} atlandı, ${counts.failed} başarısız`,
+    summary: `${collection}: ${BULK_ACTION_AUDIT_LABEL[action]} — ${ids.length} kayıt: ${counts.ok} başarılı, ${counts.skipped} atlandı, ${counts.failed} başarısız${
+      reviewConfirmed ? " — kullanıcı seçili kayıtların her birini incelediğini ve yayına alınmasını onayladığını beyan etti" : ""
+    }`,
     changes: auditRows,
   });
   return results;
@@ -205,7 +207,7 @@ export const bulkActionsEndpoint: Endpoint = {
     if (!req.user?.id) {
       return Response.json({ errors: [{ message: localized(req, "Giriş yapmalısınız.", "You must be logged in.") }] }, { status: 401 });
     }
-    let body: { collection?: unknown; action?: unknown; ids?: unknown } = {};
+    let body: { collection?: unknown; action?: unknown; ids?: unknown; reviewConfirmed?: unknown } = {};
     try {
       if (req.json) body = await req.json();
     } catch {
@@ -221,6 +223,17 @@ export const bulkActionsEndpoint: Endpoint = {
     if (!Array.isArray(ids) || ids.length === 0 || !ids.every((v) => typeof v === "string" || typeof v === "number")) {
       return badRequest(req, "Kayıt seçilmedi.", "No records selected.");
     }
+    // 19.09.2026 kullanıcı: toplu yayın kapatılmasın, ama Checker "hepsini
+    // inceledim ve onaylıyorum" diye ikinci kez açıkça beyan etsin. Required
+    // here, not only in the UI, so a direct API call can't skip it; the
+    // statement is written into the bulk audit row.
+    if (action === "publish" && body.reviewConfirmed !== true) {
+      return badRequest(
+        req,
+        "Toplu yayınlama için seçili kayıtların her birini incelediğinizi ve onayladığınızı beyan etmeniz gerekir.",
+        "To publish in bulk you must confirm you have reviewed and approve every selected record."
+      );
+    }
     const unique = [...new Set(ids.map(String))];
     if (unique.length > BULK_MAX_IDS) {
       return badRequest(
@@ -229,7 +242,12 @@ export const bulkActionsEndpoint: Endpoint = {
         `At most ${BULK_MAX_IDS} records can be processed at once.`
       );
     }
-    const results = await runBulkAction(req, { collection: collection as CollectionSlug, action: action as BulkAction, ids: unique });
+    const results = await runBulkAction(req, {
+      collection: collection as CollectionSlug,
+      action: action as BulkAction,
+      ids: unique,
+      reviewConfirmed: action === "publish",
+    });
     return Response.json({ action, collection, results, counts: countResults(results) });
   },
 };
