@@ -32,6 +32,10 @@
 --       yetkisi yoksa bu bölüm şart, yoksa rate limit KAPALI kalır (log'da uyarı).
 --       Not: ALTER TYPE ... ADD VALUE PostgreSQL 12+ gerektirir (transaction
 --       içinde çalışır; yeni değer aynı transaction'da kullanılmıyor).
+--   17. Çerez Bandı global'i (19.09.2026) → YENİ tablolar cookie_consent,
+--       cookie_consent_categories, _cookie_consent_v,
+--       _cookie_consent_v_version_categories + 4 enum; vodafone.com.tr çerez
+--       bandının metinleriyle yayınlanmış ilk kayıt (VERİ).
 --
 -- NASIL DOĞRULANDI: clover-test-db-schema.sql → 01-09-to-02-09 →
 -- 02-09-to-17-09 → bu script boş bir scratch DB'ye sırayla yüklendi; tüm
@@ -278,5 +282,156 @@ CREATE TABLE IF NOT EXISTS clover_ops.rate_limit_buckets (
   hits integer NOT NULL
 );
 CREATE INDEX IF NOT EXISTS rate_limit_buckets_window_idx ON clover_ops.rate_limit_buckets (window_start);
+
+-- -----------------------------------------------------------------------
+-- 17. Çerez Bandı global'i (19.09.2026, clover src/globals/CookieConsent.ts)
+--
+-- 17a. Enum'lar
+-- -----------------------------------------------------------------------
+DO $$
+BEGIN
+    IF to_regtype('public.enum_cookie_consent_status') IS NULL THEN
+        CREATE TYPE public.enum_cookie_consent_status AS ENUM ('draft', 'published');
+    END IF;
+    IF to_regtype('public.enum__cookie_consent_v_version_status') IS NULL THEN
+        CREATE TYPE public.enum__cookie_consent_v_version_status AS ENUM ('draft', 'published');
+    END IF;
+    IF to_regtype('public.enum_cookie_consent_categories_key') IS NULL THEN
+        CREATE TYPE public.enum_cookie_consent_categories_key AS ENUM ('necessary', 'performance', 'functional', 'marketing');
+    END IF;
+    IF to_regtype('public.enum__cookie_consent_v_version_categories_key') IS NULL THEN
+        CREATE TYPE public.enum__cookie_consent_v_version_categories_key AS ENUM ('necessary', 'performance', 'functional', 'marketing');
+    END IF;
+END $$;
+
+-- -----------------------------------------------------------------------
+-- 17b. Tablolar (Payload'ın kendi ürettiği şemayla birebir)
+-- -----------------------------------------------------------------------
+DO $$
+BEGIN
+    IF to_regclass('public.cookie_consent') IS NULL THEN
+        CREATE TABLE public._cookie_consent_v (
+            id integer NOT NULL,
+            version_enabled boolean DEFAULT true,
+            version_title character varying,
+            version_policy_link_label character varying,
+            version_policy_link_url character varying,
+            version_intro_text character varying,
+            version_reject_label character varying,
+            version_settings_link_label character varying,
+            version_reject_text character varying,
+            version_accept_label character varying,
+            version_pc_title character varying,
+            version_pc_description character varying,
+            version_more_info_label character varying,
+            version_more_info_url character varying,
+            version_allow_all_label character varying,
+            version_save_label character varying,
+            version_manage_title character varying,
+            version_always_active_label character varying,
+            version_policy_version numeric DEFAULT 1,
+            version__status public.enum__cookie_consent_v_version_status DEFAULT 'draft'::public.enum__cookie_consent_v_version_status,
+            version_updated_at timestamp(3) with time zone,
+            version_created_at timestamp(3) with time zone,
+            created_at timestamp(3) with time zone DEFAULT now() NOT NULL,
+            updated_at timestamp(3) with time zone DEFAULT now() NOT NULL,
+            latest boolean
+        );
+        CREATE SEQUENCE public._cookie_consent_v_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+        ALTER SEQUENCE public._cookie_consent_v_id_seq OWNED BY public._cookie_consent_v.id;
+        CREATE TABLE public._cookie_consent_v_version_categories (
+            _order integer NOT NULL,
+            _parent_id integer NOT NULL,
+            id integer NOT NULL,
+            key public.enum__cookie_consent_v_version_categories_key,
+            title character varying,
+            description character varying,
+            _uuid character varying
+        );
+        CREATE SEQUENCE public._cookie_consent_v_version_categories_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+        ALTER SEQUENCE public._cookie_consent_v_version_categories_id_seq OWNED BY public._cookie_consent_v_version_categories.id;
+        CREATE TABLE public.cookie_consent (
+            id integer NOT NULL,
+            enabled boolean DEFAULT true,
+            title character varying,
+            policy_link_label character varying,
+            policy_link_url character varying,
+            intro_text character varying,
+            reject_label character varying,
+            settings_link_label character varying,
+            reject_text character varying,
+            accept_label character varying,
+            pc_title character varying,
+            pc_description character varying,
+            more_info_label character varying,
+            more_info_url character varying,
+            allow_all_label character varying,
+            save_label character varying,
+            manage_title character varying,
+            always_active_label character varying,
+            policy_version numeric DEFAULT 1,
+            _status public.enum_cookie_consent_status DEFAULT 'draft'::public.enum_cookie_consent_status,
+            updated_at timestamp(3) with time zone,
+            created_at timestamp(3) with time zone
+        );
+        CREATE TABLE public.cookie_consent_categories (
+            _order integer NOT NULL,
+            _parent_id integer NOT NULL,
+            id character varying NOT NULL,
+            key public.enum_cookie_consent_categories_key,
+            title character varying,
+            description character varying
+        );
+        CREATE SEQUENCE public.cookie_consent_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+        ALTER SEQUENCE public.cookie_consent_id_seq OWNED BY public.cookie_consent.id;
+        ALTER TABLE ONLY public._cookie_consent_v ALTER COLUMN id SET DEFAULT nextval('public._cookie_consent_v_id_seq'::regclass);
+        ALTER TABLE ONLY public._cookie_consent_v_version_categories ALTER COLUMN id SET DEFAULT nextval('public._cookie_consent_v_version_categories_id_seq'::regclass);
+        ALTER TABLE ONLY public.cookie_consent ALTER COLUMN id SET DEFAULT nextval('public.cookie_consent_id_seq'::regclass);
+        ALTER TABLE ONLY public._cookie_consent_v ADD CONSTRAINT _cookie_consent_v_pkey PRIMARY KEY (id);
+        ALTER TABLE ONLY public._cookie_consent_v_version_categories ADD CONSTRAINT _cookie_consent_v_version_categories_pkey PRIMARY KEY (id);
+        ALTER TABLE ONLY public.cookie_consent_categories ADD CONSTRAINT cookie_consent_categories_pkey PRIMARY KEY (id);
+        ALTER TABLE ONLY public.cookie_consent ADD CONSTRAINT cookie_consent_pkey PRIMARY KEY (id);
+        CREATE INDEX _cookie_consent_v_created_at_idx ON public._cookie_consent_v USING btree (created_at);
+        CREATE INDEX _cookie_consent_v_latest_idx ON public._cookie_consent_v USING btree (latest);
+        CREATE INDEX _cookie_consent_v_updated_at_idx ON public._cookie_consent_v USING btree (updated_at);
+        CREATE INDEX _cookie_consent_v_version_categories_order_idx ON public._cookie_consent_v_version_categories USING btree (_order);
+        CREATE INDEX _cookie_consent_v_version_categories_parent_id_idx ON public._cookie_consent_v_version_categories USING btree (_parent_id);
+        CREATE INDEX _cookie_consent_v_version_version__status_idx ON public._cookie_consent_v USING btree (version__status);
+        CREATE INDEX cookie_consent__status_idx ON public.cookie_consent USING btree (_status);
+        CREATE INDEX cookie_consent_categories_order_idx ON public.cookie_consent_categories USING btree (_order);
+        CREATE INDEX cookie_consent_categories_parent_id_idx ON public.cookie_consent_categories USING btree (_parent_id);
+        ALTER TABLE ONLY public._cookie_consent_v_version_categories ADD CONSTRAINT _cookie_consent_v_version_categories_parent_id_fk FOREIGN KEY (_parent_id) REFERENCES public._cookie_consent_v(id) ON DELETE CASCADE;
+        ALTER TABLE ONLY public.cookie_consent_categories ADD CONSTRAINT cookie_consent_categories_parent_id_fk FOREIGN KEY (_parent_id) REFERENCES public.cookie_consent(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- -----------------------------------------------------------------------
+-- 17c. VERİ: yayınlanmış ilk kayıt — vodafone.com.tr çerez bandının metinleri
+-- (clover src/lib/cookieConsentDefaults.ts'ten üretildi). Kayıt zaten varsa
+-- (panelden kaydedilmişse) dokunulmaz.
+-- -----------------------------------------------------------------------
+INSERT INTO public.cookie_consent (enabled, title, policy_link_label, policy_link_url, intro_text, reject_label, settings_link_label, reject_text, accept_label, pc_title, pc_description, more_info_label, more_info_url, allow_all_label, save_label, manage_title, always_active_label, policy_version, _status, updated_at, created_at)
+SELECT true, E'Çerez ayarlarınızı yönetin', E'Çerez Politikamız', E'/cerez-politikasi', E'\'da ayrıntılı şekilde açıkladığımız üzere zorunlu çerezlerin kullanılması, internet sitemizin çalışması ve güvenliği için gereklidir. Bunlar dışında kalan araçların kullanılması müşterilerimizin hizmetlerimizi nasıl kullandıklarını anlamak, onlara özel teklifler sunmak (örneğin; site ziyaretlerini ölçerek) ve internet sitesinde iyileştirmeler yapabilmek için kullanıyoruz. “Çerezleri kabul et”e tıklayarak sizlere özel olan iletişimlerimizin tümünü kabul etmiş olacaksınız.', E'Reddet', E'buraya tıklayabilirsiniz.', E'seçeneğine tıklayarak çerezleri kabul etmeden devam edebilir ya da siteye çerez ayarlarını değiştirerek devam etmek için', E'Çerezleri kabul et', E'Gizliliğiniz', E'Herhangi bir internet sitesini ziyaret ettiğinizde, sitenin işlevlerinden en iyi şekilde faydalanabilmeniz için kullandığınız tarayıcı üzerinden genellikle “tanımlama bilgileri” başlığı altında çeşitli bilgiler alınabilir ve depolanabilir.\n\nSöz konusu bilgiler kullanım tercihleriniz veya kullandığınız cihaz hakkında olabilir veya sitenin doğru ve beklediğiniz şekilde çalıştırılabilmesi için kullanılabilir.\n\nBilgiler çoğunlukla sizi doğrudan ve kişisel olarak tanımlamaz; ancak size ve kullanım alışkanlıklarınıza daha uygun bir internet deneyimi sunarak, internet sitemizden en kapsamlı şekilde faydalanmanızı sağlar.\n\nBazı tanımlama bilgisi tiplerinin sitemiz tarafından kullanılmasına izin vermemeyi tercih edebilirsiniz. Ancak bu durumda sitemizdeki deneyiminizin ve size sunacağımız bazı hizmetlerin bu tercihinizden olumsuz şekilde etkilenebileceğini hatırlatmak isteriz.\n\nTanımlama bilgisi kategorileri hakkında daha fazla bilgi almak ve sitemizden en iyi şekilde faydalanabilmeniz için önceden belirlediğimiz ayarları değiştirmek için aşağıdaki kategori başlıklarına tıklayabilirsiniz.', E'Daha Fazla Bilgi', E'/cerez-politikasi', E'Tümüne İzin Ver', E'Ayarları Kaydet', E'Çerez Ayarlarınızı Yönetin', E'Her Zaman Etkin', 1, 'published', now(), now()
+WHERE NOT EXISTS (SELECT 1 FROM public.cookie_consent);
+INSERT INTO public.cookie_consent_categories (_order, _parent_id, id, key, title, description)
+SELECT 1, c.id, 'cc0000000000000000000001', 'necessary', E'Zorunlu Çerezler', E'Bu kategorideki çerezler, Site’nin doğru şekilde çalışması ve kullanılabilmesi için gereklidir.\n\nBu çerezlerin kullanımı esnasında gerçekleştirdiğimiz veri işleme faaliyetleri için Kanun m.5/2-c “Bir sözleşmenin kurulması veya ifasıyla doğrudan doğruya ilgili olması kaydıyla, sözleşmenin taraflarına ait kişisel verilerin işlenmesinin gerekli olması” ve Kanun madde 5/2-f kapsamında “İlgili kişinin temel hak ve özgürlüklerine zarar vermemek kaydıyla, veri sorumlusunun meşru menfaatleri için veri işlenmesinin zorunlu olması” hukuki sebebine dayanılmaktadır.' FROM public.cookie_consent c
+WHERE NOT EXISTS (SELECT 1 FROM public.cookie_consent_categories WHERE _parent_id = c.id AND key = 'necessary');
+INSERT INTO public.cookie_consent_categories (_order, _parent_id, id, key, title, description)
+SELECT 2, c.id, 'cc0000000000000000000002', 'performance', E'Performans (Analitik) Çerezleri', E'Kullanıcıların internet sitesini nasıl kullandıkları hakkında bilgi toplayan çerezlerdir. Bu kategorideki çerezler sayesinde, Sitenin performansının nasıl artırabileceğimizi analiz ederiz. Bu çerezlerin kullanımı esnasında gerçekleştirdiğimiz veri işleme faaliyetleri için Kanun madde 5/1 kapsamında “açık rıza” hukuki sebebine dayanılmaktadır.' FROM public.cookie_consent c
+WHERE NOT EXISTS (SELECT 1 FROM public.cookie_consent_categories WHERE _parent_id = c.id AND key = 'performance');
+INSERT INTO public.cookie_consent_categories (_order, _parent_id, id, key, title, description)
+SELECT 3, c.id, 'cc0000000000000000000003', 'functional', E'İşlevsel Çerezler', E'Bu kategorideki çerezler, internet sitesindeki kullanım tercihlerinizi hatırlamak ve site kullanımınızı kişiselleştirmek amacıyla kullanılan çerezlerdir. Bu çerezler, kullanım deneyiminizi geliştirebilmemize yararlar. Örneğin, sepetinize daha önceki ziyaretinizde hangi ürünleri attığınızı kaydederek kaldığınız yerden devam edebilmenizi sağlayabiliriz.\n\nBu çerezlerin kullanımı esnasında gerçekleştirdiğimiz veri işleme faaliyetleri için Kanun madde 5/1 kapsamında “açık rıza” hukuki sebebine dayanılmaktadır.' FROM public.cookie_consent c
+WHERE NOT EXISTS (SELECT 1 FROM public.cookie_consent_categories WHERE _parent_id = c.id AND key = 'functional');
+INSERT INTO public.cookie_consent_categories (_order, _parent_id, id, key, title, description)
+SELECT 4, c.id, 'cc0000000000000000000004', 'marketing', E'Reklam/Pazarlama Çerezleri', E'Bu kategoride yer alan çerezler, Kullanıcıların ilgi alanlarına göre kişiselleştirilmiş içerik sunmak ve pazarlama faaliyetlerinin etkinliğini ölçmek için kullanılır. Bunlar, ilgili şirketler tarafından ilgi alanlarına yönelik profilinizi oluşturmak ve diğer sitelerde bu ilgi alanlarıyla alakalı reklamları göstermek amacıyla kullanılabilir.\n\nBu bilgiler tarayıcınızı ve cihazınızı tekil olarak belirleyerek çalışırlar. Bu çerezlere izin vermediğiniz takdirde farklı internet sitelerinde size özel bir reklam deneyimi sunamayacağımızı hatırlatmak isteriz. Bu çerezlerin kullanımı esnasında gerçekleştirdiğimiz veri işleme faaliyetleri için Kanun madde 5/1 kapsamında “açık rıza” hukuki sebebine dayanılmaktadır.' FROM public.cookie_consent c
+WHERE NOT EXISTS (SELECT 1 FROM public.cookie_consent_categories WHERE _parent_id = c.id AND key = 'marketing');
+INSERT INTO public._cookie_consent_v (version_enabled, version_title, version_policy_link_label, version_policy_link_url, version_intro_text, version_reject_label, version_settings_link_label, version_reject_text, version_accept_label, version_pc_title, version_pc_description, version_more_info_label, version_more_info_url, version_allow_all_label, version_save_label, version_manage_title, version_always_active_label, version_policy_version, version__status, version_updated_at, version_created_at, latest)
+SELECT c.enabled, c.title, c.policy_link_label, c.policy_link_url, c.intro_text, c.reject_label, c.settings_link_label, c.reject_text, c.accept_label, c.pc_title, c.pc_description, c.more_info_label, c.more_info_url, c.allow_all_label, c.save_label, c.manage_title, c.always_active_label, c.policy_version, 'published', now(), now(), true FROM public.cookie_consent c
+WHERE NOT EXISTS (SELECT 1 FROM public._cookie_consent_v);
+INSERT INTO public._cookie_consent_v_version_categories (_order, _parent_id, key, title, description, _uuid)
+SELECT cat._order, v.id, cat.key::text::public.enum__cookie_consent_v_version_categories_key, cat.title, cat.description, cat.id
+FROM public.cookie_consent_categories cat CROSS JOIN (SELECT id FROM public._cookie_consent_v ORDER BY id LIMIT 1) v
+WHERE NOT EXISTS (SELECT 1 FROM public._cookie_consent_v_version_categories);
+
 
 COMMIT;

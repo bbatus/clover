@@ -39,6 +39,7 @@ const CATEGORY_BY_COLLECTION: Record<string, Category> = {
   // denyMakerPublishGlobal/denyMakerEditPublishedGlobal (globals/FooterSettings.ts)
   "footer-settings": "draft-global",
   "seo-files": "draft-global",
+  "cookie-consent": "draft-global",
   // Created/revoked only through its own endpoints (collections/ShareLinks.ts);
   // "update" here = revoking one's own link (Checkers and NV Maker: anyone's).
   "share-links": "share-links",

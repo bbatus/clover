@@ -2525,3 +2525,24 @@ Kullanıcının seçtiği "2 · Vodafone yükleme & UX dili" isteği, bir deği�
 - **DB migration:** yok, şema değişmedi.
 
 **19.09.2026 — #67'nin site yarısı geri alındı** (`vodafonepaycomtr-site` revert commit'i, ayrıntı: o repodaki #67-site). Kural: klon site canlı siteyle birebir kalır; yükleme/erişilebilirlik gibi UX iyileştirmeleri yalnız CMS'e yapılır. CMS tarafı (#67) olduğu gibi duruyor. R17 kapatıldı.
+
+## 68. Çerez bandı — CMS'ten yönetilen, vodafone.com.tr'dekinin aynısı (19.09.2026)
+
+Kullanıcının seçtiği prompt 3 / madde 1. Site tarafı: `vodafonepaycomtr-site/tasks.md` #68-site.
+
+- **Bulgu:** vodafonepay.com.tr'de şu an çerez bandı YOK. OneTrust yüklenmiyor; yalnız Çerez Politikası sayfası OneTrust çerezlerini listeliyor, Tealium etiketi de OneTrust butonlarını izlemeye hazır bekliyor. Kullanıcıya soruldu; karar "vodafone.com.tr'dekinin aynısı". Oradaki OneTrust bandı ve "Gizliliğiniz" penceresi computed style'larıyla ölçüldü (masaüstü ve 375px mobil).
+- **CMS:** `src/globals/CookieConsent.ts`, Site Yapısı → Çerez Bandı. Üç sekme:
+  - **Bant:** açık/kapalı, başlık, politika linki (metin + adres), açıklama, Reddet, ayarlar linki, kabul butonu.
+  - **Ayarlar Penceresi:** başlık, açıklama, daha fazla bilgi linki, butonlar ve kategoriler (Zorunlu / Performans / İşlevsel / Pazarlama). Her kategori bir kez eklenebilir; "Zorunlu" listeden çıkarılamaz.
+  - **Onay Sürümü:** artırılınca herkese yeniden sorulur.
+  - Maker→checker (SeoFiles ile aynı hook'lar); yardım metni, erişim matrisi satırı ve sidebar ikonu eklendi. Başlangıç metni `src/lib/cookieConsentDefaults.ts`'te; migration'a bu dosyadan üretildi.
+- Testler: 710/710 (yeni: global yapılandırması, kategori doğrulaması, erişim matrisinde yer alması). tsc 0, eslint 0.
+- Tarayıcıda doğrulama:
+  - CMS'te başlık değiştirilip onay sürümü 2 yapılarak yayınlandı. Site revalidate edildi (200); yenilemede eski onay düştü ve bant yeni başlıkla çıktı. Sonra değişiklik geri alındı.
+  - Global ekranı Türkçe sekmelerle açılıyor.
+- **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` §17:
+  - 4 tablo + 4 enum + yayınlanmış ilk kayıt (VERİ, 4 kategori).
+  - Zincir boş DB'ye yüklendi; `pg_dump --schema-only` dev DB ile diff 0; ikinci çalıştırma hatasız.
+  - Dev DB'ye aynı başlangıç verisi yüklendi.
+- **DB hatırlatma:** canlıya çıkarken aynı dosya (§11–§17) çalıştırılmalı. Ayrıntı: CLAUDE.md "Bekleyen deploy adımları".
+- E-posta bildirimleri kullanıcı kararıyla sonraya bırakıldı (CLAUDE.md backlog).

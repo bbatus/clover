@@ -30,6 +30,7 @@ export const COLLECTION_LABELS: Record<string, { tr: string; en: string }> = {
   "contact-info": { tr: "İletişim Bilgileri", en: "Contact Info" },
   "footer-settings": { tr: "Footer Yönetimi", en: "Footer Management" },
   "seo-files": { tr: "SEO Dosyaları", en: "SEO Files" },
+  "cookie-consent": { tr: "Çerez Bandı", en: "Cookie Banner" },
   "share-links": { tr: "Önizleme Linkleri", en: "Preview Links" },
   "not-found-hits": { tr: "404 Kayıtları", en: "404 Hits" },
 };

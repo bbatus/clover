@@ -50,6 +50,7 @@ import { Feedback } from "./src/collections/Feedback";
 import { ContactInfo } from "./src/globals/ContactInfo";
 import { FooterSettings } from "./src/globals/FooterSettings";
 import { SeoFiles } from "./src/globals/SeoFiles";
+import { CookieConsent } from "./src/globals/CookieConsent";
 import { ShareLinks } from "./src/collections/ShareLinks";
 import { NotFoundHits } from "./src/collections/NotFoundHits";
 import { brokenLinksScanEndpoint } from "./src/lib/brokenLinks";
@@ -485,7 +486,7 @@ export default buildConfig({
     // the "Geri Bildirim Gönder" screen's submit endpoint.
     Feedback,
   ],
-  globals: [ContactInfo, FooterSettings, SeoFiles],
+  globals: [ContactInfo, FooterSettings, SeoFiles, CookieConsent],
   // RFP §7.2 follow-up: audits collection can't hook a plain read (see
   // auditExportEndpoint's doc comment in hooks/audit.ts) — a root-level
   // endpoint is the extension point for that, unrelated to any one

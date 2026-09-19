@@ -409,6 +409,26 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
       ],
     },
   },
+  "cookie-consent": {
+    tr: {
+      title: "Çerez Bandı",
+      steps: [
+        "Sitenin ilk açılışında çıkan çerez izni penceresinin ve 'Gizliliğiniz' ayarlar penceresinin tüm metinleri burada. Tasarım Vodafone Türkiye çerez bandıyla aynıdır ve buradan değiştirilmez.",
+        "Değişiklik taslak olarak kaydedilir; Checker onaylayıp yayınladığında sitede görünür.",
+        "Çerez politikasında esaslı bir değişiklik olduğunda 'Onay Sürümü'nü bir artırın: bant daha önce seçim yapmış herkese yeniden çıkar.",
+        "Ziyaretçi izin vermeden analitik ve pazarlama çerezleri çalıştırılmaz; 'Zorunlu' kategorisi her zaman açıktır ve listeden çıkarılamaz.",
+      ],
+    },
+    en: {
+      title: "Cookie Banner",
+      steps: [
+        "Every text of the cookie consent window shown on a visitor's first visit, and of its 'Your privacy' settings window, is here. The design matches the Vodafone Türkiye cookie banner and isn't changed from here.",
+        "Changes are saved as a draft; they show on the site once a Checker approves and publishes.",
+        "After a material change to the cookie policy, raise the 'Consent Version' by one: everyone who already chose is asked again.",
+        "Analytics and marketing cookies don't run without the visitor's consent; 'Necessary' is always on and can't be removed from the list.",
+      ],
+    },
+  },
   "share-links": {
     tr: {
       title: "Önizleme Linkleri",
