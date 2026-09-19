@@ -132,6 +132,21 @@ export function auditAfterChange(collectionSlug: string): CollectionAfterChangeH
     // hook already writes, with a near-duplicate "users: X güncellendi" on
     // every login. `writeAuditLog` itself still runs for every OTHER update.
     if (context?.skipAudit) return doc;
+    // 19.09.2026 — geri dönüşüm kutusu: moving to / restoring from the trash
+    // is a Payload "update" that only sets/clears `deletedAt`; logged as what
+    // it is rather than as a generic edit.
+    const trashed = Boolean(doc?.deletedAt) && !previousDoc?.deletedAt;
+    const restored = !doc?.deletedAt && Boolean(previousDoc?.deletedAt);
+    if (operation === "update" && (trashed || restored)) {
+      const label = doc?.title ?? doc?.label ?? doc?.name ?? doc?.businessName ?? String(doc?.id ?? "");
+      await writeAuditLog(req, {
+        action: trashed ? "delete" : "update",
+        collectionSlug,
+        documentId: String(doc?.id ?? ""),
+        summary: `${collectionSlug}: "${label}" ${trashed ? "çöp kutusuna taşındı" : "çöp kutusundan geri alındı"}`,
+      });
+      return doc;
+    }
     const wasPublished = previousDoc?._status === "published";
     const isPublished = doc?._status === "published";
     let action: "create" | "publish" | "update";
@@ -202,7 +217,8 @@ export function auditAfterDelete(collectionSlug: string): CollectionAfterDeleteH
       action: "delete",
       collectionSlug,
       documentId: String(id),
-      summary: `${collectionSlug}: "${title}" silindi`,
+      // With the trash on, this only runs for a permanent delete (from the trash).
+      summary: `${collectionSlug}: "${title}" ${doc?.deletedAt ? "kalıcı olarak silindi (çöp kutusundan)" : "silindi"}`,
     });
   };
 }

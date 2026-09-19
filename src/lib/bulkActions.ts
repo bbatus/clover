@@ -122,7 +122,10 @@ async function perform(req: PayloadRequest, action: BulkAction, collection: Coll
       });
       return;
     case "deleteDraft":
-      await req.payload.delete({ ...common });
+      // 19.09.2026: into the trash (restorable), not a permanent delete —
+      // the same `deletedAt` update Payload's own "move to trash" sends, so
+      // the collection's trash-access rule (Growth Maker: own drafts) applies.
+      await req.payload.update({ ...common, data: { deletedAt: new Date().toISOString() } as never });
       return;
   }
 }

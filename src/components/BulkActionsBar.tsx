@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button, useAuth, useConfig, useRouteCache, useSelection } from "@payloadcms/ui";
 import type { Where } from "payload";
 import { useAdminLocale } from "./useAdminLocale";
@@ -42,13 +42,13 @@ const STRINGS = {
       publish: "Seçilenleri yayınla",
       unpublish: "Seçilenleri yayından kaldır",
       requestUnpublish: "Yayından kaldırma talebi oluştur",
-      deleteDraft: "Seçili taslakları sil",
+      deleteDraft: "Seçili taslakları çöp kutusuna taşı",
     } satisfies Record<BulkAction, string>,
     confirmTitle: {
       publish: (n: number) => `${n} kayıt yayınlansın mı?`,
       unpublish: (n: number) => `${n} kayıt yayından kaldırılsın mı?`,
       requestUnpublish: (n: number) => `${n} kampanya için yayından kaldırma talebi oluşturulsun mu?`,
-      deleteDraft: (n: number) => `${n} taslak silinsin mi?`,
+      deleteDraft: (n: number) => `${n} taslak çöp kutusuna taşınsın mı?`,
     } satisfies Record<BulkAction, (n: number) => string>,
     confirmBody: {
       publish:
@@ -56,10 +56,10 @@ const STRINGS = {
       unpublish: "Seçili kayıtlar siteden kalkar ve taslağa döner. Zaten yayında olmayanlar atlanır.",
       requestUnpublish:
         "Seçili yayındaki kampanyalar için talep açılır; kampanyalar bir Checker onaylayıp yayından kaldırana kadar yayında kalır.",
-      deleteDraft: "Seçili taslaklar kalıcı olarak silinir. Yayındaki kayıtlar silinmez, atlanır.",
+      deleteDraft: "Seçili taslaklar çöp kutusuna taşınır; oradan geri alınabilir. Yayındaki kayıtlar atlanır.",
     } satisfies Record<BulkAction, string>,
     campaignPublishNote: "Belirli bir tarihe planlanmış ve reddedilmiş kampanyalar atlanır.",
-    growthMakerDeleteNote: "Yalnızca kendi oluşturduğunuz taslaklar silinir.",
+    growthMakerDeleteNote: "Yalnızca kendi oluşturduğunuz taslaklar taşınır.",
     // 19.09.2026 — second, explicit statement before a bulk publish (also required by the server).
     reviewAck: (n: number) => `Seçili ${n} kaydın her birini incelediğimi ve yayına alınmasını onayladığımı beyan ederim.`,
     confirm: "Evet, devam et",
@@ -70,7 +70,7 @@ const STRINGS = {
       publish: "Toplu yayınlama sonucu",
       unpublish: "Toplu yayından kaldırma sonucu",
       requestUnpublish: "Toplu yayından kaldırma talebi sonucu",
-      deleteDraft: "Toplu taslak silme sonucu",
+      deleteDraft: "Çöp kutusuna taşıma sonucu",
     } satisfies Record<BulkAction, string>,
     counts: (ok: number, skipped: number, failed: number) => `${ok} başarılı · ${skipped} atlandı · ${failed} başarısız`,
     status: { ok: "Başarılı", skipped: "Atlandı", failed: "Başarısız" },
@@ -87,23 +87,23 @@ const STRINGS = {
       publish: "Publish selected",
       unpublish: "Unpublish selected",
       requestUnpublish: "Request unpublish",
-      deleteDraft: "Delete selected drafts",
+      deleteDraft: "Move selected drafts to the trash",
     } satisfies Record<BulkAction, string>,
     confirmTitle: {
       publish: (n: number) => `Publish ${n} record(s)?`,
       unpublish: (n: number) => `Unpublish ${n} record(s)?`,
       requestUnpublish: (n: number) => `Request unpublishing for ${n} campaign(s)?`,
-      deleteDraft: (n: number) => `Delete ${n} draft(s)?`,
+      deleteDraft: (n: number) => `Move ${n} draft(s) to the trash?`,
     } satisfies Record<BulkAction, (n: number) => string>,
     confirmBody: {
       publish:
         "Each record is published one by one with your own rights; every rule that applies to publishing a single record applies here. Records a rule refuses are not published and are listed with the reason.",
       unpublish: "The selected records come off the site and go back to draft. Records that aren't live are skipped.",
       requestUnpublish: "A request is filed for each selected live campaign; they stay live until a Checker approves and unpublishes them.",
-      deleteDraft: "The selected drafts are deleted permanently. Live records are skipped, never deleted.",
+      deleteDraft: "The selected drafts go to the trash, where they can be restored. Live records are skipped.",
     } satisfies Record<BulkAction, string>,
     campaignPublishNote: "Campaigns scheduled for a specific time, and rejected ones, are skipped.",
-    growthMakerDeleteNote: "Only drafts you created are deleted.",
+    growthMakerDeleteNote: "Only drafts you created are moved.",
     reviewAck: (n: number) => `I confirm I have reviewed each of the ${n} selected records and approve publishing them.`,
     confirm: "Yes, continue",
     cancel: "Cancel",
@@ -113,7 +113,7 @@ const STRINGS = {
       publish: "Bulk publish result",
       unpublish: "Bulk unpublish result",
       requestUnpublish: "Bulk unpublish request result",
-      deleteDraft: "Bulk draft delete result",
+      deleteDraft: "Move to trash result",
     } satisfies Record<BulkAction, string>,
     counts: (ok: number, skipped: number, failed: number) => `${ok} done · ${skipped} skipped · ${failed} failed`,
     status: { ok: "Done", skipped: "Skipped", failed: "Failed" },
@@ -135,6 +135,9 @@ export default function BulkActionsBar({ collection }: Props) {
   const { clearRouteCache } = useRouteCache();
   const router = useRouter();
   const searchParams = useSearchParams();
+  // The Çöp (trash) list has its own restore / permanent-delete controls;
+  // publishing or trashing a trashed record makes no sense there.
+  const inTrashView = /\/trash\/?$/.test(usePathname() ?? "");
 
   const role = (user as { role?: string } | undefined)?.role;
   const userId = (user as { id?: string | number } | undefined)?.id;
@@ -229,7 +232,7 @@ export default function BulkActionsBar({ collection }: Props) {
     [runOnce, resolveIds, t, collection, locale, toggleAll, clearRouteCache, router]
   );
 
-  const showBar = selectedCount > 0 && actions.length > 0;
+  const showBar = !inTrashView && selectedCount > 0 && actions.length > 0;
   if (!showBar && !result && !error) return null;
 
   const adminRoute = config.routes.admin;

@@ -36,6 +36,9 @@
 --       cookie_consent_categories, _cookie_consent_v,
 --       _cookie_consent_v_version_categories + 4 enum; vodafone.com.tr çerez
 --       bandının metinleriyle yayınlanmış ilk kayıt (VERİ).
+--   18. Geri dönüşüm kutusu (19.09.2026) → taslaklı 14 koleksiyonun ana
+--       tablolarına deleted_at, sürüm tablolarına version_deleted_at kolonu
+--       + 28 index. Veri değişikliği yok.
 --
 -- NASIL DOĞRULANDI: clover-test-db-schema.sql → 01-09-to-02-09 →
 -- 02-09-to-17-09 → bu script boş bir scratch DB'ye sırayla yüklendi; tüm
@@ -433,5 +436,71 @@ SELECT cat._order, v.id, cat.key::text::public.enum__cookie_consent_v_version_ca
 FROM public.cookie_consent_categories cat CROSS JOIN (SELECT id FROM public._cookie_consent_v ORDER BY id LIMIT 1) v
 WHERE NOT EXISTS (SELECT 1 FROM public._cookie_consent_v_version_categories);
 
+
+
+-- -----------------------------------------------------------------------
+-- 18. Geri dönüşüm kutusu (19.09.2026, clover src/access/trash.ts)
+--
+-- Taslaklı 14 koleksiyonda silme artık kaydı çöp kutusuna taşır (deleted_at
+-- damgası); kalıcı silme yalnız çöpten ve yalnız New Vertical Maker ile. Her
+-- ana tabloya deleted_at, her sürüm tablosuna version_deleted_at + index.
+-- Veri değişikliği yok (mevcut kayıtlar NULL = çöpte değil).
+-- -----------------------------------------------------------------------
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._announcements_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS announcements_deleted_at_idx ON public.announcements USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _announcements_v_version_version_deleted_at_idx ON public._announcements_v USING btree (version_deleted_at);
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._blog_posts_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS blog_posts_deleted_at_idx ON public.blog_posts USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _blog_posts_v_version_version_deleted_at_idx ON public._blog_posts_v USING btree (version_deleted_at);
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._campaigns_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS campaigns_deleted_at_idx ON public.campaigns USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _campaigns_v_version_version_deleted_at_idx ON public._campaigns_v USING btree (version_deleted_at);
+ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._categories_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS categories_deleted_at_idx ON public.categories USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _categories_v_version_version_deleted_at_idx ON public._categories_v USING btree (version_deleted_at);
+ALTER TABLE public.cookie_rows ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._cookie_rows_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS cookie_rows_deleted_at_idx ON public.cookie_rows USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _cookie_rows_v_version_version_deleted_at_idx ON public._cookie_rows_v USING btree (version_deleted_at);
+ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._documents_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS documents_deleted_at_idx ON public.documents USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _documents_v_version_version_deleted_at_idx ON public._documents_v USING btree (version_deleted_at);
+ALTER TABLE public.faq_items ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._faq_items_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS faq_items_deleted_at_idx ON public.faq_items USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _faq_items_v_version_version_deleted_at_idx ON public._faq_items_v USING btree (version_deleted_at);
+ALTER TABLE public.fee_rows ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._fee_rows_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS fee_rows_deleted_at_idx ON public.fee_rows USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _fee_rows_v_version_version_deleted_at_idx ON public._fee_rows_v USING btree (version_deleted_at);
+ALTER TABLE public.legal_pages ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._legal_pages_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS legal_pages_deleted_at_idx ON public.legal_pages USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _legal_pages_v_version_version_deleted_at_idx ON public._legal_pages_v USING btree (version_deleted_at);
+ALTER TABLE public.limit_tables ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._limit_tables_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS limit_tables_deleted_at_idx ON public.limit_tables USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _limit_tables_v_version_version_deleted_at_idx ON public._limit_tables_v USING btree (version_deleted_at);
+ALTER TABLE public.nav_links ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._nav_links_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS nav_links_deleted_at_idx ON public.nav_links USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _nav_links_v_version_version_deleted_at_idx ON public._nav_links_v USING btree (version_deleted_at);
+ALTER TABLE public.page_meta ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._page_meta_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS page_meta_deleted_at_idx ON public.page_meta USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _page_meta_v_version_version_deleted_at_idx ON public._page_meta_v USING btree (version_deleted_at);
+ALTER TABLE public.pages ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._pages_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS pages_deleted_at_idx ON public.pages USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _pages_v_version_version_deleted_at_idx ON public._pages_v USING btree (version_deleted_at);
+ALTER TABLE public.representatives ADD COLUMN IF NOT EXISTS deleted_at timestamp(3) with time zone;
+ALTER TABLE public._representatives_v ADD COLUMN IF NOT EXISTS version_deleted_at timestamp(3) with time zone;
+CREATE INDEX IF NOT EXISTS representatives_deleted_at_idx ON public.representatives USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS _representatives_v_version_version_deleted_at_idx ON public._representatives_v USING btree (version_deleted_at);
 
 COMMIT;

@@ -2546,3 +2546,40 @@ Kullanıcının seçtiği prompt 3 / madde 1. Site tarafı: `vodafonepaycomtr-si
   - Dev DB'ye aynı başlangıç verisi yüklendi.
 - **DB hatırlatma:** canlıya çıkarken aynı dosya (§11–§17) çalıştırılmalı. Ayrıntı: CLAUDE.md "Bekleyen deploy adımları".
 - E-posta bildirimleri kullanıcı kararıyla sonraya bırakıldı (CLAUDE.md backlog).
+
+## 69. Geri dönüşüm kutusu + 10 yıl saklama (19.09.2026)
+
+Kullanıcı: "geri dönüşüm kutusu yap evet" ve "saklama süresi — denetim gereği 10 yıl bir şey silmeyeceğiz".
+
+- **Çöp kutusu:** Payload 3.88'in kendi `trash` özelliği, taslaklı 14 koleksiyonda açıldı. Merkezi olarak `payload.config.ts` → `withTrash` (`src/access/trash.ts`).
+  - "Sil" artık kaydı çöpe taşıyor. Listenin sağ üstünde "Çöp" sekmesi var; çöpteki kayıt salt okunur ve "Geri Yükle" ile döner.
+  - Çöpe taşınan kayıt sitede hemen görünmez olur: Payload okumaları çöptekini hariç tutuyor ve revalidate hook'ları çalışıyor.
+- **Kurallar:**
+  - Çöpe taşıma koleksiyonun mevcut silme kuralına bağlı: New Vertical Maker hepsini, Growth Maker yalnız kendi taslağını taşıyabilir; Checker'lar taşıyamaz.
+  - Geri yükleme düzenleme yetkisi olan herkese açık, yani Checker bir Maker'ın hatasını geri alabilir. Kayıt her zaman taslak olarak döner: "yayınlanan sürüm olarak geri yükle" gizlendi ve sunucuda da reddediliyor.
+  - Kalıcı silme yalnız çöpteki kayıt için ve yalnız New Vertical Maker ile yapılabiliyor. "Çöpü atlayıp kalıcı sil" seçeneği gizlendi ve sunucu reddediyor (`requireTrashedBeforeDelete`).
+  - Otomatik boşaltma yok.
+- **Payload'ın toplu isteği:** Payload geri yüklemeyi ve çöpü boşaltmayı toplu istekle yapıyor. 18.09'daki `disableBulkEdit`/`disableBulkDelete` bu istekleri engelliyordu.
+  - Bayraklar kapatılmadı; kapatılsaydı Payload'ın maker→checker bilmeyen toplu Düzenle/Yayınla butonları geri gelirdi.
+  - Yalnız bu iki istek biçimi `src/lib/trashBulk.ts`'te kayıt kayıt, kullanıcının kendi yetkisiyle yürütülüyor. Diğer toplu istekler eskisi gibi reddediliyor.
+  - Bunun için Payload'ın zaten kullandığı `qs-esm@8.0.1` açık bağımlılık olarak eklendi → Trivy taraması gerekli.
+- **Diğer yerler:**
+  - Toplu işlem çubuğundaki "Seçili taslakları sil" artık "çöp kutusuna taşı" diyor ve taşıyor.
+  - Toplu işlem çubuğu ve sürükle-sırala listesi Çöp görünümünde gizleniyor.
+  - Denetim kaydı "çöp kutusuna taşındı", "çöp kutusundan geri alındı" ve "kalıcı olarak silindi (çöp kutusundan)" diye yazıyor.
+  - Kılavuz'a "Yanlışlıkla sildim" maddesi eklendi.
+- **Saklama (R6 kararı):** kod tarandı; kalıcı silen tek yer 404 kayıtlarındaki "yer açmak için en eskiyi sil" idi.
+  - Kaldırıldı: sınır 5 000 → 50 000 adres; dolunca yalnız yeni adres eklenmiyor ve logda uyarı var.
+  - Denetim kayıtları, önizleme linkleri, geri bildirim ve 404'ün `delete` erişimi zaten `false`.
+  - Tek istisna rate limit sayaç tablosu; bu kayıt değil, bir saatlik sayaç.
+  - Medya ve kullanıcılar kapsam dışı (CLAUDE.md R18, karar bekliyor).
+- **Tarayıcı ve API doğrulaması** (test için oluşturulan duyuru #15 üzerinde):
+  - New Vertical Maker ile sil: pencere "çöp kutusuna taşımayı düşünüyorsunuz" diyor, kalıcı sil seçeneği yok. Çöp sekmesinde kayıt görünüyor.
+  - Growth Checker: "Çöpü Boşalt" ve sürükle-sırala yok; "Geri Yükle" kaydı taslak olarak geri getirdi.
+  - Growth Maker: kendi taslağını çöpe taşıdı. Kalıcı silmede ve yayınlanmış olarak geri yüklemede reddedildi.
+  - Growth Checker: kalıcı silmede reddedildi.
+  - New Vertical Maker: yayındaki bir kaydı çöpü atlayarak silmede reddedildi (kayda dokunulmadı). Çöpü boşaltınca test kaydı kalıcı silindi.
+  - Denetim kaydında beş adım sırasıyla görünüyor. Test kullanıcısının rolü `new_vertical_maker`'a geri alındı.
+- Testler: 724/724 (yeni: trash erişimi 6, toplu çöp istekleri 4, denetim 2, 404 saklama 2, toplu çubuk ve sürükle-sırala Çöp görünümü). tsc 0, eslint 0.
+- **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` §18 — 14 ana tabloya `deleted_at`, 14 sürüm tablosuna `version_deleted_at`, 28 index. Zincir boş DB'de yüklendi, `pg_dump --schema-only` dev DB ile diff 0, ikinci çalıştırma hatasız.
+- **DB hatırlatma:** canlıya çıkarken aynı dosya (§11–§18). Ayrıntı: CLAUDE.md "Bekleyen deploy adımları".

@@ -136,7 +136,7 @@ describe("POST /api/bulk-actions — per record", () => {
     expect(payload.update.mock.calls[0][0].data).toMatchObject({ _status: "published", unpublishRequest: "pending", unpublishRequestedBy: 9 });
   });
 
-  it("deletes drafts by id through the normal delete", async () => {
+  it("moves drafts to the trash (restorable), never a permanent delete", async () => {
     const { req, payload } = makeReq({
       user: { id: 1, role: "new_vertical_maker" },
       body: { collection: "blog-posts", action: "deleteDraft", ids: [1, 2] },
@@ -144,8 +144,9 @@ describe("POST /api/bulk-actions — per record", () => {
     });
     const { body } = await call(req);
     expect(body.results.map((r) => r.status)).toEqual(["ok", "skipped"]);
-    expect(payload.delete).toHaveBeenCalledTimes(1);
-    expect(payload.delete.mock.calls[0][0]).toMatchObject({ id: "1", overrideAccess: false, overrideLock: false });
+    expect(payload.delete).not.toHaveBeenCalled();
+    const trashCall = payload.update.mock.calls.find((c: [{ data?: { deletedAt?: string } }]) => c[0].data?.deletedAt);
+    expect(trashCall?.[0]).toMatchObject({ id: "1", overrideAccess: false, overrideLock: false });
   });
 
   it("reports a record it can't read as not found, without touching it", async () => {

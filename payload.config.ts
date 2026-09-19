@@ -59,7 +59,8 @@ import { startScheduledPublishing } from "./src/lib/campaignSchedule";
 import { ROLES } from "./src/access/roles";
 import { env } from "./src/env";
 import { TRANSLATION_DEFAULTS } from "./src/lib/translationDefaults";
-import { refreshLabelCache } from "./src/lib/collectionLabels";
+import { DRAFT_ENABLED_COLLECTIONS, refreshLabelCache } from "./src/lib/collectionLabels";
+import { withTrash } from "./src/access/trash";
 import { auditExportEndpoint, auditForbiddenAttempt } from "./src/hooks/audit";
 import { livenessEndpoint, readinessEndpoint } from "./src/lib/healthEndpoints";
 
@@ -485,7 +486,10 @@ export default buildConfig({
     // Hidden from every sidebar group (admin.hidden) — reachable only through
     // the "Geri Bildirim Gönder" screen's submit endpoint.
     Feedback,
-  ],
+    // 19.09.2026 — geri dönüşüm kutusu on every draft-enabled content
+    // collection (src/access/trash.ts): delete = move to trash, restorable;
+    // permanent delete only from the trash, New Vertical Maker only.
+  ].map((collection) => (DRAFT_ENABLED_COLLECTIONS.has(collection.slug) ? withTrash(collection) : collection)),
   globals: [ContactInfo, FooterSettings, SeoFiles, CookieConsent],
   // RFP §7.2 follow-up: audits collection can't hook a plain read (see
   // auditExportEndpoint's doc comment in hooks/audit.ts) — a root-level

@@ -3036,3 +3036,17 @@ html[data-theme="dark"] .bulk {
 .rapb-modal .vf-state {
   margin: 0.5rem 0 0.75rem;
 }
+
+/* 19.09.2026 — geri dönüşüm kutusu (src/access/trash.ts): no "skip the trash
+   and delete permanently" route. Payload offers that checkbox in its delete
+   dialogs to whoever holds delete permission; the server refuses a permanent
+   delete of a record that isn't in the trash, so the control is hidden too. */
+.delete-document__checkbox,
+.delete-documents__checkbox {
+  display: none;
+}
+/* Restores come back as drafts and go live through approval (lib/trashBulk.ts). */
+.restore-button__checkbox,
+.restore-many__checkbox {
+  display: none;
+}

@@ -33,18 +33,19 @@ Kullanıcıyla konuşuldu, "daha sonranın konusu ama aklımızda tutalım". Bir
 | R3 | Kırık link dış kontrolünde DNS rebinding ile kalan küçük SSRF açığı (ad çözümlemesi kontrolden sonra değişebilir). | Açık — düşük | Tam kapatmak için çözülen IP'ye sabitlenmiş bağlantı gerekir; R2 yapılırsa pratikte kapanır. |
 | R4 | Checker kayıtları tek tek önizlemeden toplu yayınlayabiliyor. | KARAR VERİLDİ 19.09.2026 (tasks.md #65) | Kullanıcı: toplu yayın kalsın. Kutucukla "her birini inceledim ve onaylıyorum" beyanı zorunlu; sunucu da istiyor, denetim kaydına yazılıyor. |
 | R5 | Growth Maker, Checker onayı almamış bir taslak için dışarıya önizleme linki üretebiliyor (tasarım gereği). | Karar bekliyor | Yalnız Checker'lar üretsin istenirse `ShareLinks.ts` create uç noktasında tek satırlık rol kontrolü. |
-| R6 | KVKK saklama süresi yok: `not_found_hits` (adres, geldiği sayfa), `share_links` (not alanı: kişi adı olabilir), toplu işlem denetim satırları. | Karar bekliyor — hukuk | Saklama süresi belirlenince periyodik silme işi (zamanlayıcıya eklenebilir). |
+| R6 | ~~KVKK saklama süresi yok.~~ | KARAR VERİLDİ 19.09.2026 (tasks.md #69) | Kullanıcı: "denetim gereği 10 yıl bir şey silmeyeceğiz." Denetim kayıtları, 404 kayıtları, önizleme linkleri ve geri bildirimler hiçbir zaman otomatik silinmez; editörler de silemez. 404 tablosundaki "yer açmak için en eskiyi sil" kaldırıldı (sınır 50 000 adres). İçerik silme çöp kutusuna gider, otomatik boşaltma yok. İstisna: `clover_ops.rate_limit_buckets` (bir saatlik istek sayaçları, kayıt değil). 10 yıl dolunca silme işi o gün ayrıca tasarlanmalı. |
 | R7 | Önizleme linki görüntülenme sayısı Teams/Slack/WhatsApp link önizleme botlarıyla şişiyor. | Açık — düşük | Bot user-agent'ları sayılmayabilir; "kaç kez açıldı" kesin değildir. |
 | R8 | Sitenin kendi API rotalarındaki (`/api/not-found`, `/api/preview`) hız sınırları pod başına bellekte; HPA ile N pod = N kat sınır. | KISMEN KAPANDI 19.09.2026 (#66) | CMS'in bütün API'leri artık Postgres'te ortak sayaçla sınırlı (pod'lar arası). Site rotaları bellekte kaldı: sitenin DB bağlantısı yok ve bu rotalar zaten satır sınırı / imza ile korunuyor. |
 | R9 | Gece yarısı biten kampanya sitenin listesinde önbellek yüzünden 1 saate kadar görünmeye devam edebilir. | Açık — düşük | Zamanlayıcı İstanbul gece yarısında `campaigns` etiketini tazeleyebilir. |
 | R10 | Taslaklı 14 koleksiyonda Payload'ın toplu "Düzenle"si kaldırıldı; `?where=` ile toplu REST yazma artık 403. | Bilgi | Kodda kullanan yer yok; dışarıdan toplu yazan bir script varsa etkilenir. |
 | R11 | 18.09 ve 19.09 (#66 güvenlik) işleri için SonarQube taraması yapılmadı (AGENTS.md "büyük değişiklik sonrası Sonar" kuralı). | Açık — süreç | Push'tan önce `docker compose -f ../vodafonepaycomtr/tools/sonarqube/docker-compose.yml up -d` + `SONAR_TOKEN=… scripts/sonar-scan.sh` (her iki repoda). Bağımlılık değişmediği için Trivy gerekmiyor. |
-| R12 | Bekleyen migration (`clover-schema-migration-17-09-to-18-09-2026.sql`, §11–§17) canlıda çalışmadan deploy edilirse ilgili ekranlar 500 verir; §15 olmadan toplu işlem özet denetim satırı yazılamaz. §16 (rate limit tablosu) yoksa CMS kendisi oluşturmayı dener, yetkisi yoksa sınır devre dışı kalır (istekler engellenmez, logda uyarı). | Açık — deploy | Aşağıdaki "Bekleyen deploy adımları". |
+| R12 | Bekleyen migration (`clover-schema-migration-17-09-to-18-09-2026.sql`, §11–§18) canlıda çalışmadan deploy edilirse ilgili ekranlar 500 verir; §15 olmadan toplu işlem özet denetim satırı yazılamaz. §16 (rate limit tablosu) yoksa CMS kendisi oluşturmayı dener, yetkisi yoksa sınır devre dışı kalır (istekler engellenmez, logda uyarı). | Açık — deploy | Aşağıdaki "Bekleyen deploy adımları". |
 | R13 | Önceden bilinen, kapsam dışı bırakılanlar: gerçek LDAP girişi bağlı değil; içerik test→canlı taşıma yok; içerik çok dilli değil; SEO analitiği (GA4/GTM) yok. | Açık — yol haritası | RFP denklik sayfasında da listeli. |
 | R14 | Yerel Docker Desktop Docker Hub'a ulaşamıyor (`node:24-alpine` çözümlemesi takılıyor; Mac'in kendisi ulaşabiliyor). #66 bu yüzden container yerine yerel `next build` + `next start` ile production modunda doğrulandı; yerel container'lar hâlâ 17.09 imajları. | Açık — yerel ortam | Docker Desktop'ı yeniden başlatıp `docker compose up -d --build` (her iki repoda). OCP pipeline'ını etkilemez. |
 | R15 | CSP'de `script-src 'unsafe-inline'` var (nonce yok). Nonce, ISR/statik önbelleği bozacağı için bilinçli tercih. Dış kaynaklı script yine de engelli (doğrulandı). | Bilgi | İleride GA4/GTM eklenirse CSP'ye o alan adları eklenmeli (`src/lib/security/headers.ts`, iki repoda). |
 | R16 | Oturum 30 dk hareketsizlikte kapanıyor, ama `CMS_AUTO_LOGIN=true` iken (yalnız yerel inceleme) giriş hiç olmadığından bu davranış yerelde görülemez. | Bilgi | Gerçek girişle (LDAP bağlandığında) bir kez tarayıcıda denenmeli: 29. dakikada Payload'ın "oturumda kal" penceresi çıkmalı. |
 | R17 | ~~Sitede Ücretler ve Limitler'deki yeşil #008a00 kontrastı 4,34:1 (AA 4,5).~~ | KAPANDI 19.09.2026 — değiştirilmeyecek | Kullanıcı: klon site canlıyla birebir kalacak; UX/erişilebilirlik iyileştirmeleri yalnız CMS'e. Sitedeki #67-site eklemeleri de geri alındı. |
+| R18 | Medya (görseller) ve Kullanıcılar çöp kutusu kapsamında değil: New Vertical Maker bir görseli sildiğinde kalıcı siliniyor. 10 yıl kuralının içeriği de kapsayıp kapsamadığı netleştirilmeli. | Karar bekliyor | Kapsanacaksa Media'ya da `withTrash` eklenir (dosya MinIO'da kalır, geri alınabilir). |
 
 ## ⚠️ Bekleyen deploy adımları (canlı DB'de HENÜZ ÇALIŞTIRILMADI — 19.09.2026 güncel)
 
@@ -60,6 +61,7 @@ Kullanıcı: "bu sessionda henüz deploy etmicem, geliştirmeler devam edecek." 
 - §15 — Toplu işlemler: `enum_audit_logs_action`'a `'bulk'` değeri.
 - §16 — API hız sınırı sayaçları (19.09.2026): YENİ şema `clover_ops` + `clover_ops.rate_limit_buckets` tablosu. Şema oluşturma yetkisi gerekir (`CREATE` on database); DBeaver'da çalıştıran kullanıcıda yoksa DBA'ya bu bölümü ayrıca çalıştırtın.
 - §17 — Çerez Bandı global'i (19.09.2026): `cookie_consent` + kategoriler + sürüm tabloları, 4 enum; vodafone.com.tr çerez bandının metinleriyle yayınlanmış ilk kayıt (VERİ).
+- §18 — Geri dönüşüm kutusu (19.09.2026): taslaklı 14 koleksiyonun ana tablolarına `deleted_at`, sürüm tablolarına `version_deleted_at` + 28 index. Veri değişikliği yok.
 - Tekrar çalıştırılabilir. PostgreSQL 12+ gerekir. Zincirle birlikte boş DB'de doğrulandı; şema dev DB ile birebir aynı.
 
 **Deploy sırası:**
@@ -73,9 +75,10 @@ Kullanıcı: "bu sessionda henüz deploy etmicem, geliştirmeler devam edecek." 
           to_regclass('public.share_links') AS onizleme, to_regclass('public.not_found_hits') AS kirik_link,
           'bulk' = ANY(enum_range(NULL::enum_audit_logs_action)::text[]) AS toplu,
           to_regclass('clover_ops.rate_limit_buckets') AS hiz_siniri,
-          (SELECT count(*) FROM cookie_consent_categories) AS cerez_kategorisi;
+          (SELECT count(*) FROM cookie_consent_categories) AS cerez_kategorisi,
+          (SELECT count(*) FROM information_schema.columns WHERE column_name IN ('deleted_at','version_deleted_at')) AS cop_kutusu;
    ```
-   Beklenen: `seo_files | 1 | 1 | share_links | not_found_hits | t | clover_ops.rate_limit_buckets | 4`.
+   Beklenen: `seo_files | 1 | 1 | share_links | not_found_hits | t | clover_ops.rate_limit_buckets | 4 | 28`.
 5. Configmap'leri uygula; ikisine de `TZ: "Europe/Istanbul"` eklendi. 19.09.2026 (#66): sitenin configmap'ine `CMS_PUBLIC_URL` eklendi (CMS'in dışarıdan açılan adresi; CSP `frame-ancestors` buna izin veriyor, yanlışsa CMS'teki canlı önizleme iframe'i boş kalır). Varsa `MEDIA_PUBLIC_URL` (MinIO'nun dış adresi) da eklenmeli. Clover configmap'indeki yeni ayarlar yorum satırı, varsayılanlar yeterli: `CMS_SESSION_IDLE_MINUTES` (30), `RATE_LIMIT_DISABLED`, `RATE_LIMIT_MULTIPLIER`, `TRUSTED_PROXY_HOPS` (1 = yalnız OCP router), `LOG_FORMAT` (JSON; `pretty` eski görünüm), `API_ACCESS_LOG` (`all` = her istek). `clover/` ve `vodafonepaycomtr-site/` içinde ayrı ayrı `oc apply -f k8s/configmap.yaml`.
 6. Önce Clover'ı, sonra siteyi deploy et (`oc rollout status ...`). #66'dan sonra ikisi aynı deploy'da çıkmalı: yeni Clover'ın "Önizle" linki (`?token=`) eski sitede, eski Clover'ınki (`?secret=`) yeni sitede çalışmaz. Arada kalan birkaç dakikada yalnız editör önizlemesi etkilenir.
 7. Site önbelleğini tazele. Build sırasında CMS'e ulaşılamazsa sayfalar eksik veriyle önbelleğe giriyor:
@@ -92,6 +95,7 @@ Kullanıcı: "bu sessionda henüz deploy etmicem, geliştirmeler devam edecek." 
    - Toplu işlemler: bir liste ekranında (ör. Blog Yazıları) birkaç satır seçince tablonun üstünde "N kayıt seçildi" çubuğu çıkıyor; Denetim Kayıtları'nda işlem türü "Toplu işlem" olan satır görünüyor.
    - 18.09.2026 gözden geçirme (#64): şema değişikliği YOK, migration dosyası aynı. Zamanlanmış yayın yayınlayamazsa (ör. onaydan sonra silinen kategori) artık 30 sn'de bir sonsuza dek denemiyor: bekleme süresi 1 saate kadar katlanıyor, ilk hata Denetim Kayıtları'na "zamanlanmış yayını BAŞARISIZ" diye düşüyor, kampanya ekranında turuncu "Yayınlanamadı" notu çıkıyor. Kırık Linkler'in dış link kontrolü iç ağ adreslerine (10.x, 172.16–31.x, 169.254.x, localhost, Service adları) istek atmıyor; yine de `k8s/networkpolicy.yaml` egress'i hâlâ `{}` — ağ ekibiyle daraltılmalı.
    - #66 güvenlik: `curl -sI https://<cms>/admin` ve `curl -sI https://<site>/` yanıtlarında `content-security-policy`, `strict-transport-security`, `x-request-id` başlıkları var. CMS'te bir sayfada "Önizle" linki `?token=` ile açılıyor ve taslağı gösteriyor. Clover logu JSON satırları (`"service":"clover"`). 11 hatalı girişte 11.'si "Çok fazla istek gönderildi" (429) diyor ve Denetim Kayıtları'na "API istek sınırı aşıldı" satırı düşüyor.
+   - Çöp kutusu (#69): bir listede kayıt silince "çöp kutusuna taşı" diye soruyor; listenin sağ üstünde "Çöp" sekmesi var, oradan "Geri Yükle" çalışıyor.
    - Çerez bandı (#68): sitenin ilk açılışında (gizli pencerede) "Çerez ayarlarınızı yönetin" penceresi çıkıyor; "buraya tıklayabilirsiniz" ayarlar penceresini açıyor. CMS → Site Yapısı → Çerez Bandı açılıyor.
 
-Detaylar: `tasks.md` #58, #59, #63, #64, #66 ve #68.
+Detaylar: `tasks.md` #58, #59, #63, #64, #66, #68 ve #69.

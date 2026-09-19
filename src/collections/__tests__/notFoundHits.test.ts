@@ -39,37 +39,25 @@ describe("POST /not-found-hits/record (18.09.2026 review)", () => {
     expect(payload.create.mock.calls[0][0].data).toMatchObject({ path: "/eski-sayfa", lastReferrer: "https://mail.example.com/r" });
   });
 
-  it("when full, evicts the stalest one-off address instead of refusing every new one forever", async () => {
-    const payload = {
-      find: vi
-        .fn()
-        .mockResolvedValueOnce({ docs: [] }) // the new path isn't there yet
-        .mockResolvedValueOnce({ docs: [{ id: 42 }] }), // stalest single-hit row
-      count: vi.fn().mockResolvedValue({ totalDocs: MAX_ROWS }),
-      delete: vi.fn().mockResolvedValue({}),
-      create: vi.fn().mockResolvedValue({}),
-    };
-    const res = await endpoint("/record").handler(req({ path: "/yeni-kirik" }, payload));
-    expect(res.status).toBe(204);
-    expect(payload.find.mock.calls[1][0]).toMatchObject({
-      where: { and: [{ count: { less_than_equal: 1 } }, { ignored: { not_equals: true } }] },
-      sort: "lastSeenAt",
-      limit: 1,
-    });
-    expect(payload.delete).toHaveBeenCalledWith(expect.objectContaining({ id: 42 }));
-    expect(payload.create).toHaveBeenCalled();
-  });
-
-  it("when full of repeat or ignored addresses, drops the new one", async () => {
+  it("never deletes a row to make room (10-year retention, 19.09.2026): when full, the new address is dropped and logged", async () => {
+    const warn = vi.fn();
     const payload = {
       find: vi.fn().mockResolvedValue({ docs: [] }),
       count: vi.fn().mockResolvedValue({ totalDocs: MAX_ROWS }),
       delete: vi.fn(),
       create: vi.fn(),
+      logger: { warn },
     };
-    await endpoint("/record").handler(req({ path: "/yeni-kirik" }, payload));
+    const res = await endpoint("/record").handler(req({ path: "/yeni-kirik" }, payload));
+    expect(res.status).toBe(204);
     expect(payload.delete).not.toHaveBeenCalled();
     expect(payload.create).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.objectContaining({ path: "/yeni-kirik", max: MAX_ROWS }));
+  });
+
+  it("room for 50 000 distinct addresses; editors can't delete any", () => {
+    expect(MAX_ROWS).toBe(50_000);
+    expect(NotFoundHits.access?.delete?.({} as never)).toBe(false);
   });
 
   it("refuses callers without the site's secret", async () => {

@@ -9,8 +9,10 @@ const mockUseAuth = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 
+let mockPathname = "/admin/collections/faq-items";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mockRefresh }),
+  usePathname: () => mockPathname,
 }));
 
 vi.mock("@payloadcms/ui", () => ({
@@ -49,6 +51,13 @@ afterEach(() => {
 });
 
 describe("ReorderWidget", () => {
+  it("stays out of the Çöp (trash) list", () => {
+    mockPathname = "/admin/collections/faq-items/trash";
+    const { container } = render(<ReorderWidget collection="faq-items" />);
+    mockPathname = "/admin/collections/faq-items";
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("renders nothing for a role without write access (no fetch issued)", async () => {
     mockUseAuth.mockReturnValue({ user: { role: ROLES.GROWTH_MAKER } });
     const { container } = render(<ReorderWidget collection="faq-items" />);

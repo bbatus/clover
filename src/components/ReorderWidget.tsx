@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { toast, useAuth } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
@@ -325,7 +325,19 @@ export type GroupsFrom = {
   where?: Record<string, unknown>;
 };
 
-export default function ReorderWidget({
+type ReorderWidgetProps = Parameters<typeof ReorderWidgetBody>[0];
+
+/**
+ * 19.09.2026: nothing to reorder in a collection's Çöp (trash) list — the
+ * trashed rows aren't on the site, and the widget would list the live ones.
+ */
+export default function ReorderWidget(props: ReorderWidgetProps) {
+  const pathname = usePathname();
+  if (/\/trash\/?$/.test(pathname ?? "")) return null;
+  return <ReorderWidgetBody {...props} />;
+}
+
+function ReorderWidgetBody({
   collection,
   groupField,
   groupLabels: groupLabelsByLocale,

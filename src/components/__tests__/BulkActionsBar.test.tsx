@@ -10,9 +10,11 @@ const mockSelection = vi.fn();
 const toggleAll = vi.fn();
 const refresh = vi.fn();
 
+let pathname = "/admin/collections/campaigns";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
   useSearchParams: () => new URLSearchParams(),
+  usePathname: () => pathname,
 }));
 
 vi.mock("@payloadcms/ui", () => ({
@@ -83,9 +85,18 @@ describe("BulkActionsBar", () => {
     render(<BulkActionsBar collection="campaigns" />);
     expect(await screen.findByText("2 kayıt seçildi")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Yayından kaldırma talebi oluştur" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Seçili taslakları sil" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Seçili taslakları çöp kutusuna taşı" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Seçilenleri yayınla" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Seçilenleri yayından kaldır" })).not.toBeInTheDocument();
+  });
+
+  it("stays out of the Çöp (trash) list, which has its own restore controls", () => {
+    auth(ROLES.NEW_VERTICAL_MAKER, { update: true, delete: true });
+    selected([1]);
+    pathname = "/admin/collections/campaigns/trash";
+    const { container } = render(<BulkActionsBar collection="campaigns" />);
+    pathname = "/admin/collections/campaigns";
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("shows a Growth Maker nothing at all where it has no bulk action", () => {
@@ -101,7 +112,7 @@ describe("BulkActionsBar", () => {
     render(<BulkActionsBar collection="blog-posts" />);
     expect(screen.getByRole("button", { name: "Seçilenleri yayınla" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Seçilenleri yayından kaldır" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Seçili taslakları sil" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Seçili taslakları çöp kutusuna taşı" })).not.toBeInTheDocument();
   });
 
   it("confirms, sends the selection to the bulk endpoint and lists every record's outcome", async () => {

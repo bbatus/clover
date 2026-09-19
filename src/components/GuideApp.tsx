@@ -62,6 +62,8 @@ const STRINGS = {
       "Kampanyam reddedildi ama sebebini göremiyorum — Dashboard'daki 'Onaya Gönderdikleriniz' widget'ında, o kaydın yanında red sebebi görünür; görünmüyorsa kaydı açıp üstteki durum panelini kontrol edin.",
     stuckUnpublish:
       "Yayındaki bir hata çok acil, hemen düzeltmem lazım — bir Maker'sanız yayındaki kayda hiç dokunamazsınız; önce bir Checker'dan 'Yayından Kaldır' yapmasını isteyin (toolbar'daki buton), o taslağa döndükten sonra siz düzenleyip tekrar onaya gönderin. Kampanyalar'da ayrıca 'Acil Düzeltme' ikinci bir onay adımıyla yayındayken doğrudan düzenlemeye izin verir.",
+    stuckTrash:
+      "Yanlışlıkla sildim — silinen kayıt çöp kutusuna gider, kalıcı olarak silinmez. O koleksiyonun listesinde sağ üstteki 'Çöp' sekmesini açın, kaydı seçip 'Geri Yükle' deyin; kayıt taslak olarak döner ve yayına yine onayla çıkar. Kalıcı silme yalnız çöp kutusundan ve yalnız New Vertical Maker ile yapılır.",
     stuckMissingCollection:
       "Aradığım koleksiyonu sidebar'da bulamıyorum — bazı koleksiyonlar (Ücret/Limit Tabloları, Dokümanlar) kendi sidebar girişleri yerine özel bir ekrandan yönetiliyor: 'Ücretler ve Limitler' ve 'Sözleşmeler ve Formlar'. Çeviriler hiçbir rolde görünmez, sadece arka planda panelin kendi metinlerini besler.",
     stuckFeedback:
@@ -104,6 +106,8 @@ const STRINGS = {
       "My campaign was rejected but I can't see why — the 'Your Submissions' dashboard widget shows the rejection reason next to that record; if it's not there, open the record and check the status panel at the top.",
     stuckUnpublish:
       "A live bug is urgent, I need to fix it right now — as a Maker you can't touch a live record at all; ask a Checker to 'Unpublish' it first (the toolbar button), then edit the resulting draft and resubmit. Campaigns additionally has an 'Emergency Fix' path that allows editing live directly behind a second confirmation step.",
+    stuckTrash:
+      "I deleted something by mistake — deleted records go to the trash, not away for good. Open the 'Trash' tab at the top right of that collection's list, select the record and choose 'Restore'; it comes back as a draft and goes live through approval again. Permanent deletion happens only from the trash, by a New Vertical Maker.",
     stuckMissingCollection:
       "I can't find a collection in the sidebar — a few (Fee/Limit Tables, Documents) are managed from a dedicated screen instead of their own sidebar entry: 'Fees and Limits' and 'Legal Documents and Forms'. Translations never shows for any role — it only feeds the panel's own text in the background.",
     stuckFeedback:
@@ -246,6 +250,7 @@ export default function GuideApp() {
           <li>{t.stuckPassword}</li>
           <li>{t.stuckReject}</li>
           <li>{t.stuckUnpublish}</li>
+          <li>{t.stuckTrash}</li>
           <li>{t.stuckMissingCollection}</li>
           <li>{t.stuckFeedback}</li>
         </ul>

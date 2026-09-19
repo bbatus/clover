@@ -96,6 +96,21 @@ describe("auditAfterChange", () => {
     } as never);
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "update" }) }));
   });
+  it("logs moving to / restoring from the trash as such (19.09.2026)", async () => {
+    const { req, create } = fakeReq({ user: { email: "a@b.com" } });
+    const hook = auditAfterChange("pages");
+    await hook({ req, operation: "update", doc: { id: 1, title: "S", deletedAt: "2026-09-19" }, previousDoc: { id: 1, title: "S", deletedAt: null } } as never);
+    await hook({ req, operation: "update", doc: { id: 1, title: "S", deletedAt: null }, previousDoc: { id: 1, title: "S", deletedAt: "2026-09-19" } } as never);
+    const summaries = create.mock.calls.map((c) => c[0].data);
+    expect(summaries[0]).toMatchObject({ action: "delete", summary: 'pages: "S" çöp kutusuna taşındı' });
+    expect(summaries[1]).toMatchObject({ action: "update", summary: 'pages: "S" çöp kutusundan geri alındı' });
+  });
+
+  it("names a permanent delete from the trash", async () => {
+    const { req, create } = fakeReq({ user: { email: "a@b.com" } });
+    await auditAfterDelete("pages")({ req, id: 1, doc: { id: 1, title: "S", deletedAt: "2026-09-19" } } as never);
+    expect(create.mock.calls[0][0].data.summary).toBe('pages: "S" kalıcı olarak silindi (çöp kutusundan)');
+  });
 });
 
 describe("auditAfterDelete", () => {

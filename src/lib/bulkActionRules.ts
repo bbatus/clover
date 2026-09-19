@@ -229,7 +229,7 @@ export const BULK_ACTION_AUDIT_LABEL: Record<BulkAction, string> = {
   publish: "toplu yayınlama",
   unpublish: "toplu yayından kaldırma",
   requestUnpublish: "toplu yayından kaldırma talebi",
-  deleteDraft: "toplu taslak silme",
+  deleteDraft: "toplu çöp kutusuna taşıma",
 };
 
 /**

@@ -14,9 +14,15 @@ import { writeAuditLog } from "@/hooks/audit";
  * are normalised and capped, scanner probes (file extensions, wp-*, .env…)
  * are dropped on the site side AND here, and once MAX_ROWS distinct addresses
  * exist no new ones are added (existing counters still grow).
+ *
+ * 19.09.2026 — saklama: kullanıcı "denetim gereği 10 yıl bir şey
+ * silmeyeceğiz". Rows are never deleted — not by the app, not by editors
+ * (`delete: () => false`). The earlier "evict the stalest one-off address
+ * when full" is gone; the cap is 50 000 distinct addresses instead (scanner
+ * noise is filtered before it gets here), and reaching it is logged.
  */
 
-export const MAX_ROWS = 5000;
+export const MAX_ROWS = 50_000;
 const MAX_PATH = 300;
 
 /** Paths worth recording: site pages, not asset/scanner noise. */
@@ -88,21 +94,9 @@ const recordEndpoint: Endpoint = {
     }
     const { totalDocs } = await req.payload.count({ collection: "not-found-hits", overrideAccess: true });
     if (totalDocs >= MAX_ROWS) {
-      // 18.09.2026 review: the cap used to be permanent — once a scanner (or
-      // plain time) filled it with one-off addresses, no new 404 was ever
-      // recorded again and nothing could delete rows. Now the stalest
-      // single-hit, not-ignored address makes room; addresses seen more than
-      // once, and ones an editor marked, are never evicted this way.
-      const { docs: stale } = await req.payload.find({
-        collection: "not-found-hits",
-        where: { and: [{ count: { less_than_equal: 1 } }, { ignored: { not_equals: true } }] },
-        sort: "lastSeenAt",
-        limit: 1,
-        depth: 0,
-        overrideAccess: true,
-      });
-      if (!stale[0]) return new Response(null, { status: 204 });
-      await req.payload.delete({ collection: "not-found-hits", id: (stale[0] as { id: string | number }).id, overrideAccess: true });
+      // Nothing is deleted to make room (10-year retention, see above).
+      req.payload.logger.warn({ msg: "not-found-hits full: new addresses are no longer recorded", max: MAX_ROWS, path });
+      return new Response(null, { status: 204 });
     }
     try {
       await req.payload.create({
