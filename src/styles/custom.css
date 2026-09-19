@@ -584,9 +584,11 @@ a {
   font-weight: 600;
 }
 
+/* 19.09.2026: 450 → 600. At 450 hint text measured 3.32:1 on white, under
+   WCAG AA's 4.5:1 for text this small; 600 is 5.8:1. */
 .cm-hint,
 .cm-muted {
-  color: var(--theme-elevation-450);
+  color: var(--theme-elevation-600);
   font-size: 0.85rem;
   margin: 0;
 }
@@ -2899,4 +2901,133 @@ html[data-theme="dark"] .bulk {
   line-height: 1.5;
   white-space: pre;
   overflow-x: auto;
+}
+
+/* ───────────────────────────────────────────────────────────────────────
+   19.09.2026 — shared waiting / empty / error states (AdminStates.tsx).
+   CMS only: the public site deliberately has no spinner. */
+.vf-spinner {
+  --vf-spinner-size: 1.5rem;
+  --vf-spinner-width: 3px;
+  display: inline-block;
+  flex: none;
+  width: var(--vf-spinner-size);
+  height: var(--vf-spinner-size);
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 20%, var(--vf-red-dark) 55%, var(--vf-red) 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--vf-spinner-width)), #000 calc(100% - var(--vf-spinner-width) + 0.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--vf-spinner-width)), #000 calc(100% - var(--vf-spinner-width) + 0.5px));
+  animation: vf-spin 0.9s linear infinite;
+}
+.vf-spinner--s {
+  --vf-spinner-size: 0.95rem;
+  --vf-spinner-width: 2px;
+}
+.vf-spinner--l {
+  --vf-spinner-size: 2.25rem;
+  --vf-spinner-width: 4px;
+}
+@keyframes vf-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.vf-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1.1rem 1.25rem;
+  margin: 0.75rem 0;
+  border-radius: var(--style-radius-m, 6px);
+  border: 1px solid var(--theme-elevation-100);
+  background: var(--theme-elevation-0);
+}
+.vf-state--compact {
+  padding: 0.6rem 0.85rem;
+  align-items: center;
+}
+.vf-state__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.vf-state__title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--theme-elevation-800);
+}
+.vf-state__detail {
+  margin: 0;
+  font-size: 0.83rem;
+  color: var(--theme-elevation-600);
+  max-width: 70ch;
+}
+.vf-state__elapsed {
+  font-weight: 400;
+  color: var(--theme-elevation-600);
+  font-variant-numeric: tabular-nums;
+}
+.vf-state__action {
+  margin-top: 0.5rem;
+}
+.vf-state__action .btn {
+  margin: 0;
+}
+.vf-state__icon {
+  flex: none;
+  margin-top: 0.05rem;
+}
+.vf-state--loading .vf-spinner {
+  margin-top: 0.05rem;
+}
+.vf-state--compact .vf-spinner {
+  margin-top: 0;
+}
+.vf-state--empty {
+  border-style: dashed;
+}
+.vf-state--empty .vf-state__icon {
+  color: var(--theme-elevation-400);
+}
+.vf-state--error {
+  border-color: color-mix(in srgb, var(--vf-red) 35%, transparent);
+  background: color-mix(in srgb, var(--vf-red) 5%, var(--theme-elevation-0));
+}
+.vf-state--error .vf-state__icon {
+  color: var(--vf-red);
+}
+
+/* Button in its working state: spinner before the label, width steady. */
+.vf-busy-btn .btn__content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.vf-busy-btn--busy {
+  cursor: progress;
+}
+.btn--style-primary.vf-busy-btn--busy .vf-spinner {
+  background: conic-gradient(from 0deg, transparent 0 20%, rgba(255, 255, 255, 0.6) 55%, #fff 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-spinner {
+    animation: none;
+    background: conic-gradient(var(--vf-red) 0 70%, var(--theme-elevation-150) 70% 100%);
+  }
+}
+.bulk-confirm-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.btn--style-primary .bulk-confirm-label .vf-spinner,
+.btn--style-error .bulk-confirm-label .vf-spinner {
+  background: conic-gradient(from 0deg, transparent 0 20%, rgba(255, 255, 255, 0.6) 55%, #fff 100%);
+}
+.rapb-modal .vf-state {
+  margin: 0.5rem 0 0.75rem;
 }

@@ -6,6 +6,7 @@ import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
 import ReorderWidget from "./ReorderWidget";
 import { TableSkeleton } from "./TableSkeleton";
+import { EmptyState, ErrorState, useStateStrings } from "./AdminStates";
 import { ROLES } from "@/access/roleConstants";
 
 /** Mirrors ReorderWidget's own `canReorder` — kept next to it so the two cannot drift apart silently again. */
@@ -156,17 +157,25 @@ function TablePanel<T extends { id: string | number }>({
   headers,
   renderRow,
   emptyLabel,
+  error,
+  onRetry,
 }: {
   rows: T[] | null;
   headers: string[];
   renderRow: (row: T) => React.ReactNode;
   emptyLabel: string;
+  error?: string | null;
+  onRetry?: () => void;
 }) {
   let body: React.ReactNode;
-  if (rows === null) {
+  // 19.09.2026: a failed load used to leave the skeleton pulsing forever
+  // under a one-line error — the error now replaces it, with a retry.
+  if (error) {
+    body = <ErrorState message={error} onRetry={onRetry} />;
+  } else if (rows === null) {
     body = <TableSkeleton columns={headers.length} />;
   } else if (rows.length === 0) {
-    body = <p className="cm-hint">{emptyLabel}</p>;
+    body = <EmptyState title={emptyLabel} />;
   } else {
     body = (
       <div className="table-wrap">
@@ -189,6 +198,7 @@ function TablePanel<T extends { id: string | number }>({
 export default function FeesAndLimitsApp() {
   const locale = useAdminLocale();
   const t = useDbStrings(locale);
+  const states = useStateStrings();
   const [tab, setTab] = useState<Tab>("fee-rows");
   const [feeRows, setFeeRows] = useState<FeeRow[] | null>(null);
   const [limitTables, setLimitTables] = useState<LimitTable[] | null>(null);
@@ -205,14 +215,18 @@ export default function FeesAndLimitsApp() {
           fetch("/api/fee-rows?depth=0&limit=200&sort=order", { credentials: "same-origin" }),
           fetch("/api/limit-tables?depth=0&limit=200&sort=order", { credentials: "same-origin" }),
         ]);
-        if (!feeRes.ok || !limitRes.ok) throw new Error("fetch failed");
+        if (!feeRes.ok || !limitRes.ok) {
+          throw new Error(feeRes.status === 403 || limitRes.status === 403 ? "forbidden" : "fetch failed");
+        }
         const feeData = await feeRes.json();
         const limitData = await limitRes.json();
         if (cancelled) return;
         setFeeRows(feeData.docs ?? []);
         setLimitTables(limitData.docs ?? []);
-      } catch {
-        if (!cancelled) setError(t("contentManagement.noAccess"));
+      } catch (err) {
+        // Only a 403 is a permissions problem; a timeout or 500 used to be
+        // reported as "you don't have permission" too.
+        if (!cancelled) setError(err instanceof Error && err.message === "forbidden" ? t("contentManagement.noAccess") : states.loadFailed);
       }
     };
     void load();
@@ -222,7 +236,7 @@ export default function FeesAndLimitsApp() {
     // reorderKey bump (via ReorderWidget's onSaved / drawer onSave below)
     // forces this summary table to refetch — see ReorderWidget.tsx's
     // `onSaved` prop comment for why router.refresh() alone isn't enough here.
-  }, [reorderKey, t]);
+  }, [reorderKey, t, states]);
 
   return (
     <div className="cm">
@@ -243,8 +257,6 @@ export default function FeesAndLimitsApp() {
         ))}
       </div>
 
-      {error && <p className="cm-error">{error}</p>}
-
       {tab === "fee-rows" && (
         <>
           <CreateButton collectionSlug="fee-rows" label={t("feesAndLimits.createFeeRow")} onSaved={refetch} />
@@ -258,6 +270,8 @@ export default function FeesAndLimitsApp() {
             ]}
             renderRow={(row) => <FeeRowRow key={row.id} row={row} onSaved={refetch} />}
             emptyLabel={t("contentManagement.empty")}
+            error={error}
+            onRetry={refetch}
           />
           <ReorderSection collection="fee-rows" title={t("feesAndLimits.reorderTitle")} onSaved={refetch} />
         </>
@@ -276,6 +290,8 @@ export default function FeesAndLimitsApp() {
             ]}
             renderRow={(lt) => <LimitTableRow key={lt.id} lt={lt} onSaved={refetch} />}
             emptyLabel={t("contentManagement.empty")}
+            error={error}
+            onRetry={refetch}
           />
           <ReorderSection collection="limit-tables" title={t("feesAndLimits.reorderTitle")} onSaved={refetch} />
         </>

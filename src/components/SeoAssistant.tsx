@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDocumentInfo, useFormFields } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
+import { VfSpinner } from "./AdminStates";
 import {
   analyzeSeo,
   lexicalUploadIds,
@@ -43,6 +44,7 @@ const STRINGS = {
     google: "Google'da görünüm",
     social: "Paylaşıldığında görünüm",
     noImage: "Görsel yok — sitenin varsayılan paylaşım görseli kullanılır",
+    imageLoading: "Görsel yükleniyor",
     checks: "Kontroller",
     advisory: "Bu panel yalnızca öneri verir; kaydetmeyi ya da yayınlamayı engellemez.",
     msg: {
@@ -115,6 +117,7 @@ const STRINGS = {
     google: "In Google",
     social: "When shared",
     noImage: "No image — the site's default share image is used",
+    imageLoading: "Loading image",
     checks: "Checks",
     advisory: "This panel only advises; it never blocks saving or publishing.",
     msg: {
@@ -196,9 +199,13 @@ async function fetchMedia(ids: (string | number)[]): Promise<Media[]> {
   if (ids.length === 0) return [];
   const params = new URLSearchParams({ depth: "0", limit: String(ids.length) });
   ids.forEach((id, i) => params.append(`where[id][in][${i}]`, String(id)));
-  const res = await fetch(`/api/media?${params.toString()}`, { credentials: "include" });
-  if (!res.ok) return [];
-  return ((await res.json()) as { docs: Media[] }).docs;
+  try {
+    const res = await fetch(`/api/media?${params.toString()}`, { credentials: "include" });
+    if (!res.ok) return [];
+    return ((await res.json()) as { docs: Media[] }).docs;
+  } catch {
+    return [];
+  }
 }
 
 export default function SeoAssistant(props: Props) {
@@ -223,6 +230,9 @@ export default function SeoAssistant(props: Props) {
   const inlineKey = inlineIds.join(",");
 
   const [image, setImage] = useState<Media | null>(null);
+  // Which image id `image` belongs to — until they match, the social card
+  // shows a spinner instead of briefly claiming "no image" (19.09.2026).
+  const [loadedImageId, setLoadedImageId] = useState<string | number | undefined>(undefined);
   const [inline, setInline] = useState<Media[]>([]);
   const [duplicates, setDuplicates] = useState<number | undefined>(undefined);
 
@@ -231,7 +241,11 @@ export default function SeoAssistant(props: Props) {
     if (imageId === undefined) {
       Promise.resolve().then(() => !cancelled && setImage(null));
     } else {
-      fetchMedia([imageId]).then((docs) => !cancelled && setImage(docs[0] ?? null));
+      fetchMedia([imageId]).then((docs) => {
+        if (cancelled) return;
+        setImage(docs[0] ?? null);
+        setLoadedImageId(imageId);
+      });
     }
     return () => {
       cancelled = true;
@@ -314,6 +328,7 @@ export default function SeoAssistant(props: Props) {
   const imageCandidates = [image?.sizes?.card?.url, image?.url].filter((u): u is string => Boolean(u));
   const [failedUrls, setFailedUrls] = useState<string[]>([]);
   const imageUrl = imageCandidates.find((u) => !failedUrls.includes(u));
+  const imageLoading = imageId !== undefined && loadedImageId !== imageId;
 
   const messageFor = (c: Check): string => {
     const v = c.values ?? {};
@@ -349,7 +364,11 @@ export default function SeoAssistant(props: Props) {
       <section className="seoa-block" aria-label={t.social}>
         <span className="seoa-label">{t.social}</span>
         <div className="seoa-card">
-          {imageUrl ? (
+          {imageLoading ? (
+            <div className="seoa-card-img seoa-card-img--empty" role="status" aria-label={t.imageLoading}>
+              <VfSpinner />
+            </div>
+          ) : imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- admin-only preview of a CMS media URL
             <img
               className="seoa-card-img"

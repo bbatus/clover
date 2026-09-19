@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAdminLocale } from "./useAdminLocale";
 import { useDbStrings } from "./useDbStrings";
 import { TableSkeleton } from "./TableSkeleton";
+import { EmptyState, ErrorState } from "./AdminStates";
 import {
   ALL_REPORTED_SLUGS,
   HAND_BUILT_ROUTES,
@@ -248,8 +249,8 @@ export default function ContentManagementApp() {
     if (isSiteRoutesTab) return renderSiteRoutesDetail();
     if (!tab) return null;
     if (loading) return <TableSkeleton columns={1 + tab.columns.length} />;
-    if (error) return <p className="cm-error">{error}</p>;
-    if (docs.length === 0) return <p className="cm-hint">{t("contentManagement.empty")}</p>;
+    if (error) return <ErrorState message={error} onRetry={load} />;
+    if (docs.length === 0) return <EmptyState title={t("contentManagement.empty")} />;
     return (
       <div className="table-wrap">
         <table className="cm-table">

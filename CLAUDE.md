@@ -43,6 +43,7 @@ Kullanıcıyla konuşuldu, "daha sonranın konusu ama aklımızda tutalım". Bir
 | R14 | Yerel Docker Desktop Docker Hub'a ulaşamıyor (`node:24-alpine` çözümlemesi takılıyor; Mac'in kendisi ulaşabiliyor). #66 bu yüzden container yerine yerel `next build` + `next start` ile production modunda doğrulandı; yerel container'lar hâlâ 17.09 imajları. | Açık — yerel ortam | Docker Desktop'ı yeniden başlatıp `docker compose up -d --build` (her iki repoda). OCP pipeline'ını etkilemez. |
 | R15 | CSP'de `script-src 'unsafe-inline'` var (nonce yok). Nonce, ISR/statik önbelleği bozacağı için bilinçli tercih. Dış kaynaklı script yine de engelli (doğrulandı). | Bilgi | İleride GA4/GTM eklenirse CSP'ye o alan adları eklenmeli (`src/lib/security/headers.ts`, iki repoda). |
 | R16 | Oturum 30 dk hareketsizlikte kapanıyor, ama `CMS_AUTO_LOGIN=true` iken (yalnız yerel inceleme) giriş hiç olmadığından bu davranış yerelde görülemez. | Bilgi | Gerçek girişle (LDAP bağlandığında) bir kez tarayıcıda denenmeli: 29. dakikada Payload'ın "oturumda kal" penceresi çıkmalı. |
+| R17 | Sitede tek kontrast açığı: Ücretler ve Limitler'deki yeşil "Ücretsiz" / periyot yazısı (#008a00, açık gri zeminde 4,34:1; AA için 4,5 gerekir). Renk canlı sitenin kendi CSS'inden birebir alındığı için (piksel eşleşme kuralı) değiştirilmedi. | Karar bekliyor | Onay gelirse `PricesAndLimits.tsx`'te iki yerde #008a00 → #007a00 (4,9:1, gözle fark edilmez). Diğer 7 sayfada ihlal yok (tasks.md #67). |
 
 ## ⚠️ Bekleyen deploy adımları (canlı DB'de HENÜZ ÇALIŞTIRILMADI — 18.09.2026)
 

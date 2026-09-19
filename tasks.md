@@ -2484,3 +2484,42 @@ Kullanıcının seçtiği "1 · Güvenlik & dayanıklılık" isteği. Site taraf
 - Doğrulama (yerel `next build` + `next start`, production modu — Docker Desktop Docker Hub'a ulaşamadığı için container yeniden kurulamadı, CLAUDE.md R14): CSP'de `unsafe-eval` yok, admin ve sitede CSP ihlali yok, dışarıdan eklenen script engellendi; 10 hatalı giriş 401, 11.'si 429 "Çok fazla istek gönderildi. Lütfen 60 saniye sonra tekrar deneyin." + `x-request-id`, başka IP etkilenmedi; log satırları JSON; geçerli önizleme anahtarı 307 + draft çerezi, süresi dolmuş / değiştirilmiş / eski `?secret=` biçimi 401.
 - **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` §16 — `CREATE SCHEMA IF NOT EXISTS clover_ops` + `rate_limit_buckets` tablosu ve index'i. Zincir boş DB'de yüklendi, `pg_dump --schema-only` dev DB ile diff 0 satır; ikinci çalıştırma hatasız.
 - **DB hatırlatma:** canlıya çıkarken aynı dosya (§11–§16) çalıştırılmalı; §16 şema oluşturma yetkisi ister. Ayrıntı: CLAUDE.md "Bekleyen deploy adımları". Clover ve site aynı deploy'da çıkmalı (önizleme linki biçimi değişti).
+
+## 67. Vodafone yükleme ve deneyim dili — CMS tarafı (19.09.2026)
+
+Kullanıcının seçtiği "2 · Vodafone yükleme & UX dili" isteği, bir değişiklikle: **dönen yükleme göstergesi yalnız CMS'te; sitede spinner yok**, orada sayfa biçiminde iskelet var. Site tarafı: `vodafonepaycomtr-site/tasks.md` #67-site.
+
+- **Ortak bileşenler:** `src/components/AdminStates.tsx`:
+  - `VfSpinner`: Vodafone kırmızısından koyu kırmızıya dönen halka; "animasyonları azalt" ayarında durur.
+  - `LoadingState`: isteğe bağlı açıklama ve uzun işlemlerde saniye sayacı.
+  - `EmptyState` / `ErrorState`: boş ile hata artık ayrı. Hata "Tekrar dene" ile gelir.
+  - `useBusyAction`: çift tıklama kilidi, ref ile tutulduğu için aynı karedeki iki tık da tek istek gönderir; satır bazında anahtarlı kilit de var.
+  - `BusyButton`: Payload'ın kendi `btn` sınıflarını kullanır; spinner + "…iyor" yazısı + `aria-busy`.
+  - Metinler tr/en (`useAdminLocale`). Stiller `custom.css` `.vf-spinner` / `.vf-state` altında. `admin.components` yolu değil; importMap değişmedi.
+- **Uygulanan ekranlar:**
+  - **Kırık Linkler:**
+    - Tarama sırasında saniye sayacı ve açıklama gösteriliyor.
+    - Tarama bağlantı hatasında önceden sessizce takılıyordu; artık hata kutusu ve tekrar dene var.
+    - 404 listesinin yüklenememesi artık "Kayıtlı 404 yok" gibi görünmüyor, hata kutusu çıkıyor.
+    - "Yok say" butonları satır bazında kilitli.
+  - **Ücretler ve Limitler:**
+    - Hata olunca iskelet sonsuza dek dönüyordu; artık yerine hata kutusu ve tekrar dene geliyor.
+    - 500 ya da ağ hatası artık "yetkiniz yok" diye gösterilmiyor; o mesaj yalnız 403'te çıkıyor.
+  - **Tüm İçerikler:** hata ve boş durumları yeni bileşenlerle, tekrar dene ile.
+  - **Toplu işlem:**
+    - "Evet, devam et" çift tıklamada tek istek gönderiyor.
+    - Pencerede "N kayıt tek tek işleniyor… · X sn" gösteriliyor.
+    - Beyan kutusu işlem sırasında kilitli.
+    - Gerçek ilerleme yüzdesi yok: sunucu tek istekte işliyor ve parçalara bölmek hız sınırına (10/dk) takılırdı.
+  - **SEO asistanı:** paylaşım görseli yüklenirken bir an "Görsel yok" demek yerine spinner gösteriyor; medya isteği hatası yakalanıyor.
+  - **Önizleme linki paneli:**
+    - Oluştur ve İptal et butonları kilitli; ağ hatası yakalanıyor.
+    - Aktif linkler yüklenirken spinner, yüklenemezse tekrar dene gösteriliyor.
+- **Kontrast:** `.cm-hint` / `.cm-muted` gri tonu `elevation-450` → `600` yapıldı; beyaz zeminde 3,32:1 idi, AA altındaydı, şimdi 5,8:1. Yeni durum metinleri de aynı tonda.
+- Testler: 706/706 (yeni: AdminStates 9; Ücretler'de 403 ile 500'ün ayrı gösterilmesi ve tekrar dene). tsc 0, eslint 0.
+- Tarayıcıda doğrulama (dev, CMS önünde 3,5 sn gecikmeli proxy ile):
+  - Kırık Linkler'de "Taranıyor… · 2 sn" durumu görüldü; çift tıkta tek `/api/broken-links/scan` isteği gitti.
+  - 404 listesinde yapay ağ hatasıyla kırmızı hata kutusu çıktı; "Tekrar dene" listeyi geri getirdi.
+  - Toplu yayın penceresinde çift tıkta tek istek ve "2 kayıt tek tek işleniyor · 2 sn" görüldü. İstek sayfada tutuldu, sunucuya gitmedi; veri değişmedi.
+  - Önizleme panelinde çift tıkta tek istek ve "Oluşturuluyor…" görüldü.
+- **DB migration:** yok, şema değişmedi.

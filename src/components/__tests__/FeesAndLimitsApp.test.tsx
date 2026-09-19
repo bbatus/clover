@@ -81,16 +81,36 @@ describe("FeesAndLimitsApp", () => {
     expect(screen.getByTestId("reorder-limit-tables")).toBeInTheDocument();
   });
 
-  it("shows an error message when the fee-rows fetch fails", async () => {
+  it("says 'no permission' only for a 403, with the skeleton replaced", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string) => {
         if (url.includes("/api/translations")) return Promise.resolve({ ok: true, json: async () => ({ docs: [] }) });
-        return Promise.resolve({ ok: false, json: async () => ({}) });
+        return Promise.resolve({ ok: false, status: 403, json: async () => ({}) });
+      })
+    );
+    const { container } = render(<FeesAndLimitsApp />);
+    await waitFor(() => expect(screen.getByText("Bu koleksiyonu görüntüleme yetkiniz yok.")).toBeInTheDocument());
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(container.querySelector(".cm-table--skeleton")).toBeNull();
+  });
+
+  it("a server/network failure is reported as such, with a retry that reloads", async () => {
+    let fail = true;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.includes("/api/translations")) return Promise.resolve({ ok: true, json: async () => ({ docs: [] }) });
+        if (fail) return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
+        return Promise.resolve({ ok: true, json: async () => ({ docs: [] }) });
       })
     );
     render(<FeesAndLimitsApp />);
-    await waitFor(() => expect(screen.getByText("Bu koleksiyonu görüntüleme yetkiniz yok.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Sunucudan cevap alınamadı/)).toBeInTheDocument());
+    expect(screen.queryByText("Bu koleksiyonu görüntüleme yetkiniz yok.")).toBeNull();
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Tekrar dene" }));
+    await waitFor(() => expect(screen.getByText("Kayıt bulunamadı.")).toBeInTheDocument());
   });
 
   it("shows the create buttons to a role that has create permission", async () => {

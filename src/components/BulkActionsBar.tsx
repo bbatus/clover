@@ -7,6 +7,7 @@ import type { Where } from "payload";
 import { useAdminLocale } from "./useAdminLocale";
 import { useIsActiveCheckerDelegate } from "./useIsActiveCheckerDelegate";
 import { ROLES } from "@/access/roleConstants";
+import { LoadingState, VfSpinner, useBusyAction } from "./AdminStates";
 import { describeApiError } from "@/lib/apiErrorMessage";
 import { BULK_MAX_IDS, bulkActionsFor, type BulkAction, type BulkResponse } from "@/lib/bulkActionRules";
 
@@ -64,6 +65,7 @@ const STRINGS = {
     confirm: "Evet, devam et",
     cancel: "Vazgeç",
     running: "İşleniyor…",
+    progress: (n: number) => `${n} kayıt tek tek işleniyor. Bitene kadar bu pencereyi kapatmayın.`,
     resultTitle: {
       publish: "Toplu yayınlama sonucu",
       unpublish: "Toplu yayından kaldırma sonucu",
@@ -106,6 +108,7 @@ const STRINGS = {
     confirm: "Yes, continue",
     cancel: "Cancel",
     running: "Working…",
+    progress: (n: number) => `Processing ${n} records one by one. Keep this window open until it finishes.`,
     resultTitle: {
       publish: "Bulk publish result",
       unpublish: "Bulk unpublish result",
@@ -152,7 +155,9 @@ export default function BulkActionsBar({ collection }: Props) {
 
   const [confirming, setConfirming] = useState<BulkAction | null>(null);
   const [reviewAck, setReviewAck] = useState(false);
-  const [running, setRunning] = useState(false);
+  // Ref-guarded (AdminStates.useBusyAction): a fast double click on
+  // "Evet, devam et" can no longer send the same bulk request twice.
+  const { run: runOnce, busy: running } = useBusyAction();
   const [result, setResult] = useState<BulkResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -189,40 +194,39 @@ export default function BulkActionsBar({ collection }: Props) {
   }, [selectAll, selectedIDs, searchParams, clientCollection, getQueryParams, collection, t.loadFailed]);
 
   const run = useCallback(
-    async (action: BulkAction) => {
-      setRunning(true);
-      setError(null);
-      try {
-        const ids = await resolveIds();
-        if (ids.length > BULK_MAX_IDS) {
-          setError(t.tooMany(BULK_MAX_IDS));
-          return;
+    (action: BulkAction) =>
+      runOnce(async () => {
+        setError(null);
+        try {
+          const ids = await resolveIds();
+          if (ids.length > BULK_MAX_IDS) {
+            setError(t.tooMany(BULK_MAX_IDS));
+            return;
+          }
+          const res = await fetch("/api/bulk-actions", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ collection, action, ids, ...(action === "publish" ? { reviewConfirmed: true } : {}) }),
+          });
+          const body = (await res.json().catch(() => null)) as unknown;
+          if (!res.ok) {
+            setError(describeApiError({ status: res.status, body, locale, context: "generic" }));
+            return;
+          }
+          setResult(body as BulkResponse);
+          // Clear the selection (the rows it pointed at may be gone or changed)
+          // and re-render the table from the server.
+          toggleAll();
+          clearRouteCache();
+          router.refresh();
+        } catch (err) {
+          setError(err instanceof Error && err.message ? err.message : describeApiError({ err, locale, context: "generic" }));
+        } finally {
+          setConfirming(null);
         }
-        const res = await fetch("/api/bulk-actions", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ collection, action, ids, ...(action === "publish" ? { reviewConfirmed: true } : {}) }),
-        });
-        const body = (await res.json().catch(() => null)) as unknown;
-        if (!res.ok) {
-          setError(describeApiError({ status: res.status, body, locale, context: "generic" }));
-          return;
-        }
-        setResult(body as BulkResponse);
-        // Clear the selection (the rows it pointed at may be gone or changed)
-        // and re-render the table from the server.
-        toggleAll();
-        clearRouteCache();
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error && err.message ? err.message : describeApiError({ err, locale, context: "generic" }));
-      } finally {
-        setRunning(false);
-        setConfirming(null);
-      }
-    },
-    [resolveIds, t, collection, locale, toggleAll, clearRouteCache, router]
+      }),
+    [runOnce, resolveIds, t, collection, locale, toggleAll, clearRouteCache, router]
   );
 
   const showBar = selectedCount > 0 && actions.length > 0;
@@ -319,9 +323,10 @@ export default function BulkActionsBar({ collection }: Props) {
                 {note}
               </p>
             ))}
+            {running && <LoadingState label={t.running} detail={t.progress(selectedCount)} showElapsed compact />}
             {confirming === "publish" && (
               <label className="rapb-ack" htmlFor="bulk-review-ack">
-                <input id="bulk-review-ack" type="checkbox" checked={reviewAck} onChange={(e) => setReviewAck(e.target.checked)} />
+                <input id="bulk-review-ack" type="checkbox" checked={reviewAck} disabled={running} onChange={(e) => setReviewAck(e.target.checked)} />
                 <span>{t.reviewAck(selectedCount)}</span>
               </label>
             )}
@@ -335,7 +340,10 @@ export default function BulkActionsBar({ collection }: Props) {
                 disabled={running || (confirming === "publish" && !reviewAck)}
                 onClick={() => void run(confirming)}
               >
-                {running ? t.running : t.confirm}
+                <span className="bulk-confirm-label">
+                  {running && <VfSpinner size="s" />}
+                  {running ? t.running : t.confirm}
+                </span>
               </Button>
             </div>
           </div>

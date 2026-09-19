@@ -5,6 +5,7 @@ import { useAuth, useDocumentInfo } from "@payloadcms/ui";
 import { useAdminLocale } from "./useAdminLocale";
 import { ROLES } from "@/access/roleConstants";
 import { formatIstanbul } from "@/lib/istanbulTime";
+import { BusyButton, ErrorState, LoadingState, useBusyAction } from "./AdminStates";
 
 /**
  * "Önizleme linki paylaş" (18.09.2026) — sidebar panel on Kampanyalar / Blog
@@ -43,6 +44,7 @@ const STRINGS = {
     until: (d: string) => `${d} (İstanbul) tarihine kadar geçerli`,
     active: "Aktif linkler",
     none: "Bu içerik için aktif link yok.",
+    listFailed: "Aktif linkler yüklenemedi.",
     views: (n: number) => `${n} kez açıldı`,
     by: "Oluşturan",
     revoke: "İptal et",
@@ -65,6 +67,7 @@ const STRINGS = {
     until: (d: string) => `valid until ${d} (Istanbul)`,
     active: "Active links",
     none: "No active links for this content.",
+    listFailed: "Couldn't load the active links.",
     views: (n: number) => `opened ${n} time${n === 1 ? "" : "s"}`,
     by: "Created by",
     revoke: "Revoke",
@@ -92,12 +95,13 @@ export default function SharePreviewPanel() {
 
   const [days, setDays] = useState<number>(3);
   const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
+  const createAction = useBusyAction();
+  const revokeAction = useBusyAction();
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ url: string; expiresAt: string } | null>(null);
   const [copied, setCopied] = useState(false);
-  const [links, setLinks] = useState<LinkRow[]>([]);
-  const [revoking, setRevoking] = useState<string | number | null>(null);
+  const [links, setLinks] = useState<LinkRow[] | null>(null);
+  const [listFailed, setListFailed] = useState(false);
 
   const load = useCallback(async () => {
     if (id === undefined || id === null || !collectionSlug) return;
@@ -106,8 +110,14 @@ export default function SharePreviewPanel() {
     params.append("where[targetId][equals]", String(id));
     params.append("where[revokedAt][exists]", "false");
     params.append("where[expiresAt][greater_than]", new Date().toISOString());
-    const res = await fetch(`/api/share-links?${params.toString()}`, { credentials: "include" });
-    if (res.ok) setLinks(((await res.json()) as { docs: LinkRow[] }).docs);
+    try {
+      const res = await fetch(`/api/share-links?${params.toString()}`, { credentials: "include" });
+      if (!res.ok) throw new Error(String(res.status));
+      setLinks(((await res.json()) as { docs: LinkRow[] }).docs);
+      setListFailed(false);
+    } catch {
+      setListFailed(true);
+    }
   }, [collectionSlug, id]);
 
   useEffect(() => {
@@ -129,40 +139,40 @@ export default function SharePreviewPanel() {
     );
   }
 
-  const create = async () => {
-    setBusy(true);
-    setError(null);
-    setCopied(false);
-    try {
-      const res = await fetch("/api/share-links/create", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ collection: collectionSlug, id, days, note }),
-      });
-      if (!res.ok) {
-        setError(await errorMessage(res, t.failed));
-        return;
+  const create = () =>
+    createAction.run(async () => {
+      setError(null);
+      setCopied(false);
+      try {
+        const res = await fetch("/api/share-links/create", {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ collection: collectionSlug, id, days, note }),
+        });
+        if (!res.ok) {
+          setError(await errorMessage(res, t.failed));
+          return;
+        }
+        setCreated((await res.json()) as { url: string; expiresAt: string });
+        setNote("");
+        await load();
+      } catch {
+        setError(t.failed);
       }
-      setCreated((await res.json()) as { url: string; expiresAt: string });
-      setNote("");
-      await load();
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
-  const revoke = async (linkId: string | number) => {
-    setRevoking(linkId);
-    setError(null);
-    try {
-      const res = await fetch(`/api/share-links/${linkId}/revoke`, { method: "POST", credentials: "include" });
-      if (!res.ok) setError(await errorMessage(res, t.failed));
+  const revoke = (linkId: string | number) =>
+    revokeAction.run(async () => {
+      setError(null);
+      try {
+        const res = await fetch(`/api/share-links/${linkId}/revoke`, { method: "POST", credentials: "include" });
+        if (!res.ok) setError(await errorMessage(res, t.failed));
+      } catch {
+        setError(t.failed);
+      }
       await load();
-    } finally {
-      setRevoking(null);
-    }
-  };
+    }, String(linkId));
 
   const copy = async () => {
     if (!created) return;
@@ -198,11 +208,7 @@ export default function SharePreviewPanel() {
           <span>{t.note}</span>
           <input id="spp-note" type="text" maxLength={200} value={note} placeholder={t.notePlaceholder} onChange={(e) => setNote(e.target.value)} />
         </label>
-        <button type="button" className={`btn btn--style-secondary btn--size-small${busy ? " btn--disabled" : ""}`} disabled={busy} onClick={() => void create()}>
-          <span className="btn__content">
-            <span className="btn__label">{busy ? t.creating : t.create}</span>
-          </span>
-        </button>
+        <BusyButton busy={createAction.busy} onClick={create} label={t.create} busyLabel={t.creating} />
       </div>
 
       {error && <p className="spp-error">{error}</p>}
@@ -224,7 +230,11 @@ export default function SharePreviewPanel() {
 
       <div className="spp-list">
         <span className="spp-subtitle">{t.active}</span>
-        {links.length === 0 ? (
+        {listFailed ? (
+          <ErrorState message={t.listFailed} onRetry={load} />
+        ) : links === null ? (
+          <LoadingState compact />
+        ) : links.length === 0 ? (
           <p className="spp-muted">{t.none}</p>
         ) : (
           <ul>
@@ -239,16 +249,7 @@ export default function SharePreviewPanel() {
                   </span>
                 </div>
                 {mayRevoke(l) && (
-                  <button
-                    type="button"
-                    className={`btn btn--style-secondary btn--size-small${revoking === l.id ? " btn--disabled" : ""}`}
-                    disabled={revoking === l.id}
-                    onClick={() => void revoke(l.id)}
-                  >
-                    <span className="btn__content">
-                      <span className="btn__label">{revoking === l.id ? t.revoking : t.revoke}</span>
-                    </span>
-                  </button>
+                  <BusyButton busy={revokeAction.isBusy(String(l.id))} onClick={() => revoke(l.id)} label={t.revoke} busyLabel={t.revoking} />
                 )}
               </li>
             ))}

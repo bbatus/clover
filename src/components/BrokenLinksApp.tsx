@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdminLocale } from "./useAdminLocale";
 import { TableSkeleton } from "./TableSkeleton";
+import { BusyButton, EmptyState, ErrorState, LoadingState, useBusyAction } from "./AdminStates";
 import { formatIstanbul } from "@/lib/istanbulTime";
 
 /**
@@ -27,7 +28,10 @@ const STRINGS = {
     external: "Dış linkleri de kontrol et (CMS sunucusunun internete erişimi olmalı)",
     run: "Taramayı başlat",
     running: "Taranıyor…",
+    scanningDetail: "Yayındaki her içerik ve içindeki her link kontrol ediliyor. Dış linkler açıksa bir dakikayı bulabilir; sayfadan ayrılmayın.",
     notRun: "Henüz tarama yapılmadı.",
+    notRunHint: "“Taramayı başlat” ile yayındaki içeriklerdeki linkleri kontrol edin.",
+    scanFailed: "Tarama tamamlanamadı",
     summary: (s: Scan) =>
       `${formatIstanbul(s.checkedAt)} (İstanbul): ${s.counts.links} link, ${s.counts.internal} farklı site içi adres${s.external ? `, ${s.counts.external} dış adres` : ""} kontrol edildi — ${s.counts.broken} kırık.`,
     allGood: "Kırık link bulunmadı.",
@@ -56,7 +60,10 @@ const STRINGS = {
     ignore: "Yok say",
     unignore: "Geri al",
     noHits: "Kayıtlı 404 yok.",
+    noHitsHint: "Ziyaretçiler sitede bulunamayan bir adrese gittiğinde burada listelenir.",
     failed: "Yüklenemedi.",
+    hitsFailed: "404 kayıtları yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.",
+    ignoring: "Kaydediliyor…",
   },
   en: {
     title: "Broken Links",
@@ -68,7 +75,10 @@ const STRINGS = {
     external: "Also check external links (the CMS server needs internet access)",
     run: "Run scan",
     running: "Scanning…",
+    scanningDetail: "Every published record and every link in it is being checked. With external links on this can take a minute; stay on this page.",
     notRun: "No scan yet.",
+    notRunHint: "Use “Run scan” to check the links in published content.",
+    scanFailed: "The scan didn't finish",
     summary: (s: Scan) =>
       `${formatIstanbul(s.checkedAt)} (Istanbul): ${s.counts.links} links, ${s.counts.internal} distinct site addresses${s.external ? `, ${s.counts.external} external addresses` : ""} checked — ${s.counts.broken} broken.`,
     allGood: "No broken links found.",
@@ -96,7 +106,10 @@ const STRINGS = {
     ignore: "Ignore",
     unignore: "Restore",
     noHits: "No 404s recorded.",
+    noHitsHint: "Addresses visitors open that don't exist on the site show up here.",
     failed: "Couldn't load.",
+    hitsFailed: "Couldn't load the 404 records. Check your connection and try again.",
+    ignoring: "Saving…",
   },
 };
 
@@ -108,33 +121,45 @@ export default function BrokenLinksApp() {
 
   const [external, setExternal] = useState(false);
   const [scan, setScan] = useState<Scan | null>(null);
-  const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const scanAction = useBusyAction();
+  const scanning = scanAction.busy;
 
   const [hits, setHits] = useState<Hit[] | null>(null);
+  const [hitsError, setHitsError] = useState(false);
   const [showIgnored, setShowIgnored] = useState(false);
+  const rowAction = useBusyAction();
 
-  const runScan = async () => {
-    setScanning(true);
-    setScanError(null);
-    try {
-      const res = await fetch(`/api/broken-links/scan${external ? "?external=1" : ""}`, { credentials: "include" });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { errors?: { message?: string }[] } | null;
-        setScanError(body?.errors?.[0]?.message ?? t.failed);
-        return;
+  const runScan = () =>
+    scanAction.run(async () => {
+      setScanError(null);
+      try {
+        const res = await fetch(`/api/broken-links/scan${external ? "?external=1" : ""}`, { credentials: "include" });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as { errors?: { message?: string }[] } | null;
+          setScanError(body?.errors?.[0]?.message ?? t.failed);
+          return;
+        }
+        setScan((await res.json()) as Scan);
+      } catch {
+        // Network drop / proxy timeout: used to be an unhandled rejection
+        // that left the old result on screen with no word of the failure.
+        setScanError(t.failed);
       }
-      setScan((await res.json()) as Scan);
-    } finally {
-      setScanning(false);
-    }
-  };
+    });
 
+  // A failed request is shown as a failure, not as "no 404s recorded".
   const loadHits = useCallback(async () => {
     const params = new URLSearchParams({ depth: "0", limit: "200", sort: "-count" });
     if (!showIgnored) params.append("where[ignored][not_equals]", "true");
-    const res = await fetch(`/api/not-found-hits?${params.toString()}`, { credentials: "include" });
-    setHits(res.ok ? ((await res.json()) as { docs: Hit[] }).docs : []);
+    try {
+      const res = await fetch(`/api/not-found-hits?${params.toString()}`, { credentials: "include" });
+      if (!res.ok) throw new Error(String(res.status));
+      setHits(((await res.json()) as { docs: Hit[] }).docs);
+      setHitsError(false);
+    } catch {
+      setHitsError(true);
+    }
   }, [showIgnored]);
 
   useEffect(() => {
@@ -147,15 +172,16 @@ export default function BrokenLinksApp() {
     };
   }, [loadHits]);
 
-  const toggleIgnore = async (hit: Hit) => {
-    await fetch(`/api/not-found-hits/${hit.id}/ignore`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ignored: !hit.ignored }),
-    });
-    await loadHits();
-  };
+  const toggleIgnore = (hit: Hit) =>
+    rowAction.run(async () => {
+      await fetch(`/api/not-found-hits/${hit.id}/ignore`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ignored: !hit.ignored }),
+      }).catch(() => null);
+      await loadHits();
+    }, String(hit.id));
 
   return (
     <div className="cm blk">
@@ -166,24 +192,20 @@ export default function BrokenLinksApp() {
         <h2 className="cm-section-title">{t.scanTitle}</h2>
         <p className="cm-hint">{t.scanHint}</p>
         <div className="blk-controls">
-          <button type="button" className={`btn btn--style-primary btn--size-small${scanning ? " btn--disabled" : ""}`} disabled={scanning} onClick={() => void runScan()}>
-            <span className="btn__content">
-              <span className="btn__label">{scanning ? t.running : t.run}</span>
-            </span>
-          </button>
+          <BusyButton variant="primary" busy={scanning} onClick={runScan} label={t.run} busyLabel={t.running} />
           <label className="blk-check" htmlFor="blk-external">
-            <input id="blk-external" type="checkbox" checked={external} onChange={(e) => setExternal(e.target.checked)} />
+            <input id="blk-external" type="checkbox" checked={external} disabled={scanning} onChange={(e) => setExternal(e.target.checked)} />
             <span>{t.external}</span>
           </label>
         </div>
-        {scanError && <p className="cm-error">{scanError}</p>}
-        {scanning && <TableSkeleton columns={3} />}
-        {!scanning && !scan && <p className="cm-hint">{t.notRun}</p>}
+        {!scanning && scanError && <ErrorState title={t.scanFailed} message={scanError} onRetry={runScan} />}
+        {scanning && <LoadingState label={t.running} detail={t.scanningDetail} showElapsed />}
+        {!scanning && !scan && !scanError && <EmptyState title={t.notRun} hint={t.notRunHint} />}
         {!scanning && scan && (
           <>
             <p className={`blk-summary${scan.counts.broken === 0 ? " blk-summary--ok" : ""}`}>{t.summary(scan)}</p>
             {scan.broken.length === 0 ? (
-              <p className="cm-hint">{t.allGood}</p>
+              <EmptyState title={t.allGood} />
             ) : (
               <div className="table-wrap">
                 <table className="cm-table blk-table">
@@ -231,10 +253,12 @@ export default function BrokenLinksApp() {
           <input id="blk-ignored" type="checkbox" checked={showIgnored} onChange={(e) => setShowIgnored(e.target.checked)} />
           <span>{t.showIgnored}</span>
         </label>
-        {hits === null ? (
+        {hitsError ? (
+          <ErrorState message={t.hitsFailed} onRetry={loadHits} />
+        ) : hits === null ? (
           <TableSkeleton columns={5} />
         ) : hits.length === 0 ? (
-          <p className="cm-hint">{t.noHits}</p>
+          <EmptyState title={t.noHits} hint={t.noHitsHint} />
         ) : (
           <div className="table-wrap">
             <table className="cm-table blk-table">
@@ -266,11 +290,12 @@ export default function BrokenLinksApp() {
                       )}
                     </td>
                     <td>
-                      <button type="button" className="btn btn--style-secondary btn--size-small" onClick={() => void toggleIgnore(h)}>
-                        <span className="btn__content">
-                          <span className="btn__label">{h.ignored ? t.unignore : t.ignore}</span>
-                        </span>
-                      </button>
+                      <BusyButton
+                        busy={rowAction.isBusy(String(h.id))}
+                        onClick={() => toggleIgnore(h)}
+                        label={h.ignored ? t.unignore : t.ignore}
+                        busyLabel={t.ignoring}
+                      />
                     </td>
                   </tr>
                 ))}
