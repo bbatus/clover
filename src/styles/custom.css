@@ -2891,3 +2891,12 @@ html[data-theme="dark"] .bulk {
   .bulk-count { width: 100%; }
 }
 .bulk-buttons .btn.bulk-danger { color: var(--bulk-fail); }
+
+/* 19.09.2026 — SEO Dosyaları textareas read as files, not prose. */
+.field-monospace textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+}

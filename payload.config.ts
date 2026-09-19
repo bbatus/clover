@@ -357,6 +357,24 @@ export default buildConfig({
       },
     },
   },
+  // 19.09.2026: Payload's default logger is pino-pretty — coloured text even
+  // in production, which log collectors (ELK / ArcSight) can't parse. In
+  // production it now writes one JSON object per line (level as a word, ISO
+  // time, service name), the same shape lib/apiGuard.ts uses for its request
+  // lines; LOG_FORMAT=pretty brings the old output back. Level from
+  // LOG_LEVEL_APP (configmap), default info.
+  ...(process.env.NODE_ENV === "production" && process.env.LOG_FORMAT !== "pretty"
+    ? {
+        logger: {
+          options: {
+            level: (process.env.LOG_LEVEL_APP || "info").toLowerCase(),
+            base: { service: "clover" },
+            timestamp: () => `,"time":"${new Date().toISOString()}"`,
+            formatters: { level: (label: string) => ({ level: label }) },
+          },
+        },
+      }
+    : {}),
   onInit: async (payload) => {
     // RFP feedback 3.2: seed the DB-backed translations collection with any
     // KEY that doesn't already exist yet — runs every boot, but only ever

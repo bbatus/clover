@@ -8,10 +8,12 @@ import {
   REST_POST,
   REST_PUT,
 } from "@payloadcms/next/routes";
+import { withApiGuard } from "@/lib/apiGuard";
 
-export const GET = REST_GET(config);
-export const POST = REST_POST(config);
-export const DELETE = REST_DELETE(config);
-export const PATCH = REST_PATCH(config);
-export const PUT = REST_PUT(config);
+// 19.09.2026: every REST call goes through the shared rate limit + access log (lib/apiGuard.ts).
+export const GET = withApiGuard(REST_GET(config), config);
+export const POST = withApiGuard(REST_POST(config), config);
+export const DELETE = withApiGuard(REST_DELETE(config), config);
+export const PATCH = withApiGuard(REST_PATCH(config), config);
+export const PUT = withApiGuard(REST_PUT(config), config);
 export const OPTIONS = REST_OPTIONS(config);

@@ -58,5 +58,12 @@ data:
 
   CMS_AUTO_LOGIN: "false"
 
+  # 19.09.2026 — security & resilience (clover CLAUDE.md, tasks.md #66):
+  # CMS_SESSION_IDLE_MINUTES: "30"   # idle session length (Payload token expiry)
+  # RATE_LIMIT_DISABLED: "false"     # shared API rate limit (clover_ops.rate_limit_buckets)
+  # RATE_LIMIT_MULTIPLIER: "1"       # e.g. 2 during a load test
+  # TRUSTED_PROXY_HOPS: "1"          # proxies appending to X-Forwarded-For (OCP router)
+  # LOG_FORMAT: "json"               # production default; "pretty" for human-readable
+  # API_ACCESS_LOG: "all"            # also log fast successful reads
   LOG_LEVEL_ROOT: "INFO"
   LOG_LEVEL_APP: "INFO"

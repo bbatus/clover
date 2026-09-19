@@ -188,6 +188,9 @@ const blockPasswordChange: CollectionBeforeOperationHook = ({ args, operation })
   return args;
 };
 
+/** Idle session length in minutes (19.09.2026); see `auth` below. */
+export const SESSION_IDLE_MINUTES = Math.max(5, Number(process.env.CMS_SESSION_IDLE_MINUTES || 30) || 30);
+
 export const Users: CollectionConfig = {
   slug: "users",
   labels: {
@@ -247,7 +250,16 @@ export const Users: CollectionConfig = {
   // the session for EVERYONE from Payload's default 2h (7200s) to 12h —
   // no checkbox, but addresses the actual complaint (getting logged out
   // mid-workday) without touching undocumented internals.
-  auth: { tokenExpiration: 60 * 60 * 12, maxLoginAttempts: 5, lockTime: 15 * 60 * 1000 },
+  //
+  // 19.09.2026: 12h → 30 min of INACTIVITY (CMS_SESSION_IDLE_MINUTES). A
+  // banking audit asks for an idle timeout, and Payload already implements
+  // one on top of this value: an active editor's token is renewed as they
+  // move between screens, a "stay logged in" dialog appears a minute before
+  // expiry, and an unanswered dialog ends at /admin/logout-inactivity. So the
+  // mid-workday logouts that led to 12h don't return for anyone who is
+  // actually working; only an unattended session closes — and the limit is
+  // enforced by the server (token expiry), not just the browser.
+  auth: { tokenExpiration: 60 * SESSION_IDLE_MINUTES, maxLoginAttempts: 5, lockTime: 15 * 60 * 1000 },
   access: {
     // RFP feedback 3.4: reverses the earlier P1-11 narrowing — the business
     // explicitly wants every role to be able to see the full user list

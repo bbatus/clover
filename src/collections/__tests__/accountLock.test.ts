@@ -22,6 +22,13 @@ describe("Users account lockout", () => {
     expect(auth.lockTime).toBe(15 * 60 * 1000);
   });
 
+  it("ends an idle session after 30 minutes (19.09.2026, was 12h)", () => {
+    // Payload refreshes the token on admin activity and shows its own
+    // "stay logged in?" modal before expiry, so this is an IDLE timeout.
+    const auth = Users.auth as { tokenExpiration?: number };
+    expect(auth.tokenExpiration).toBe(30 * 60);
+  });
+
   it("exposes lockUntil so a locked account is visible in the list", () => {
     const lockUntil = Users.fields.find((f) => "name" in f && f.name === "lockUntil");
     expect(lockUntil).toBeDefined();

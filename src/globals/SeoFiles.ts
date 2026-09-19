@@ -56,10 +56,15 @@ export const SeoFiles: GlobalConfig = {
   fields: [
     {
       name: "robotsTxt",
-      type: "code",
+      // 19.09.2026: textarea, not "code" — Payload's code field loads the
+      // Monaco editor from cdn.jsdelivr.net at runtime, which an OpenShift pod
+      // without internet egress can't reach (the field would never render) and
+      // which the CMS Content-Security-Policy now blocks. Same varchar column.
+      type: "textarea",
       label: { tr: "robots.txt", en: "robots.txt" },
       admin: {
-        language: "plaintext",
+        rows: 16,
+        className: "field-monospace",
         description: {
           tr: "Arama motoru botlarının hangi adresleri tarayabileceğini belirler. 'Sitemap:' satırını yazmayın — site kendi adresiyle otomatik ekler. Güvenlik için 'User-agent: *' altında 'Disallow: /' (sitenin tamamını kapatmak) yayınlanamaz. Boş bırakılırsa sitenin varsayılan dosyası kullanılır.",
           en: "Controls which addresses search engine bots may crawl. Don't write a 'Sitemap:' line — the site adds it with its own address. For safety, 'Disallow: /' under 'User-agent: *' (closing the whole site) can't be published. Left empty, the site's default file is used.",
@@ -70,10 +75,11 @@ export const SeoFiles: GlobalConfig = {
     },
     {
       name: "llmsTxt",
-      type: "code",
+      type: "textarea",
       label: { tr: "llms.txt", en: "llms.txt" },
       admin: {
-        language: "markdown",
+        rows: 24,
+        className: "field-monospace",
         description: {
           tr: "ChatGPT, Perplexity gibi yapay zekâ sistemlerine sitenin ne olduğunu ve önemli sayfalarını anlatan Markdown dosyası. Yeni bir ürün sayfası eklendiğinde buraya da bir satır eklemek iyi olur. Boş bırakılırsa sitenin varsayılan dosyası kullanılır.",
           en: "Markdown file telling AI systems such as ChatGPT and Perplexity what the site is and which pages matter. Worth adding a line here when a new product page goes live. Left empty, the site's default file is used.",

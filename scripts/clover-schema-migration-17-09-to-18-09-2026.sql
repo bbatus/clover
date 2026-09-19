@@ -25,6 +25,11 @@
 --   15. Toplu işlemler (18.09.2026) → enum_audit_logs_action'a 'bulk' değeri
 --       (toplu yayınlama/yayından kaldırma/silme özet denetim kaydı). Veri
 --       değişikliği yok.
+--   16. API rate limit sayaçları (19.09.2026) → YENİ şema clover_ops +
+--       rate_limit_buckets tablosu (+1 index). Payload'ın yönettiği `public`
+--       şemasının DIŞINDA (şema senkronu dokunmasın diye). Uygulama da açılışta
+--       "IF NOT EXISTS" ile oluşturmayı dener; DB kullanıcısının CREATE SCHEMA
+--       yetkisi yoksa bu bölüm şart, yoksa rate limit KAPALI kalır (log'da uyarı).
 --       Not: ALTER TYPE ... ADD VALUE PostgreSQL 12+ gerektirir (transaction
 --       içinde çalışır; yeni değer aynı transaction'da kullanılmıyor).
 --
@@ -261,5 +266,17 @@ END $$;
 -- eklenir (Payload'ın push'unun koyduğu sırayla aynı).
 -- -----------------------------------------------------------------------
 ALTER TYPE public.enum_audit_logs_action ADD VALUE IF NOT EXISTS 'bulk';
+
+
+-- -----------------------------------------------------------------------
+-- 16. API rate limit sayaçları (19.09.2026, clover src/lib/rateLimit.ts)
+-- -----------------------------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS clover_ops;
+CREATE TABLE IF NOT EXISTS clover_ops.rate_limit_buckets (
+  key text PRIMARY KEY,
+  window_start timestamptz NOT NULL,
+  hits integer NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rate_limit_buckets_window_idx ON clover_ops.rate_limit_buckets (window_start);
 
 COMMIT;
