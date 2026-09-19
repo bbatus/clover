@@ -2583,3 +2583,24 @@ Kullanıcı: "geri dönüşüm kutusu yap evet" ve "saklama süresi — denetim 
 - Testler: 724/724 (yeni: trash erişimi 6, toplu çöp istekleri 4, denetim 2, 404 saklama 2, toplu çubuk ve sürükle-sırala Çöp görünümü). tsc 0, eslint 0.
 - **DB migration:** `scripts/clover-schema-migration-17-09-to-18-09-2026.sql` §18 — 14 ana tabloya `deleted_at`, 14 sürüm tablosuna `version_deleted_at`, 28 index. Zincir boş DB'de yüklendi, `pg_dump --schema-only` dev DB ile diff 0, ikinci çalıştırma hatasız.
 - **DB hatırlatma:** canlıya çıkarken aynı dosya (§11–§18). Ayrıntı: CLAUDE.md "Bekleyen deploy adımları".
+
+## 70. Uçtan uca testler — Playwright (19.09.2026)
+
+Prompt 3 / madde 6. `e2e/` (5 test, `npm run test:e2e`, ayrıntı `e2e/README.md`). Dosyalar `*.e2e.ts`; Vitest'in `*.test.ts` deseni onları almaz.
+
+- **Akışlar:**
+  - Maker→Checker yayını ve sitede görünmesi.
+  - Zamanlanmış kampanya yayını: gerçek zamanlayıcıyla, planlanan anda.
+  - Önizleme linki: dışarıdan açılış ve iptal.
+  - Toplu yayında beyan zorunluluğu, toplu çöpe taşıma, Çöp'ten geri yükleme, Checker'ın kalıcı silememesi.
+  - Çerez bandı.
+- **Nasıl çalışıyor:**
+  - Rol değişimi veritabanından yapılıyor; test bitince (hata olsa da) `new_vertical_maker`'a dönüyor.
+  - Her test yalnız kendi `E2E …` kayıtlarını oluşturup çöpten kalıcı siliyor; koşu sonunda kalan kayıt 0.
+  - Yalnız localhost'a karşı çalışıyor.
+- **Sonuç:** 5/5 geçti (2,0 dk; zamanlanmış yayın testi ~1,7 dk). Her adımın ekran görüntüsü `e2e-results/`'ta.
+- **Testlerin bulduğu iki hata, düzeltildi:**
+  - **Yayındaki kampanya çöpe taşınamıyordu.** Kampanyaların "yayındaki kampanya doğrudan düzenlenemez" kuralı `deletedAt` damgasını içerik düzenlemesi sanıyordu; New Vertical Maker'ın "Sil" butonu yanlış mesajla reddediliyordu. `guardPublishedEdit` artık çöpe taşıma/geri yüklemeyi geçiriyor; içerik düzenlemesi hâlâ reddediliyor (test eklendi).
+  - **`CMS_AUTO_LOGIN` pod'da açılabiliyordu (R19).** Bu bayrakla her istek (sitenin okumaları dahil) admin sayılıyor ve taslaklar sitede görünüyor. `src/env.ts` artık bir Kubernetes/OpenShift pod'unda bu bayrakla açılmayı reddediyor (test eklendi).
+- **Bağımlılıklar:** `@playwright/test` 1.63.0 (dev), `pg` 8.20.0 (dev; Payload'ın zaten kullandığı sürüm). E2E klasörü ve çıktıları `.dockerignore`'da; imaja girmiyor.
+- Birim testleri: 727/727. tsc 0, eslint 0. Şema değişikliği yok.

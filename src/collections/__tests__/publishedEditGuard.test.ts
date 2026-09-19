@@ -53,6 +53,15 @@ describe("guardPublishedEdit", () => {
     }
   });
 
+  it("lets moving a live campaign to the trash, and restoring it, through (19.09.2026)", async () => {
+    const trashed = await run({ ...PUBLISHED, deletedAt: "2026-09-19T12:00:00.000Z" }, ROLES.NEW_VERTICAL_MAKER);
+    expect(trashed).toMatchObject({ deletedAt: "2026-09-19T12:00:00.000Z" });
+    const restored = await run({ ...PUBLISHED, deletedAt: null, _status: "draft" }, ROLES.GROWTH_CHECKER, { ...PUBLISHED, deletedAt: "2026-09-19T12:00:00.000Z" });
+    expect(restored).toMatchObject({ deletedAt: null });
+    // …but a content edit riding along with an unchanged trash state is still refused.
+    await expect(run({ ...PUBLISHED, deletedAt: null, title: "değişti" }, ROLES.NEW_VERTICAL_MAKER)).rejects.toThrow(/yayında/i);
+  });
+
   it("returns a 409, not an opaque 500", async () => {
     await expect(run({ ...PUBLISHED, title: "değişti" }, ROLES.NEW_VERTICAL_MAKER)).rejects.toMatchObject({ status: 409 });
   });

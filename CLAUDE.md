@@ -46,6 +46,7 @@ Kullanıcıyla konuşuldu, "daha sonranın konusu ama aklımızda tutalım". Bir
 | R16 | Oturum 30 dk hareketsizlikte kapanıyor, ama `CMS_AUTO_LOGIN=true` iken (yalnız yerel inceleme) giriş hiç olmadığından bu davranış yerelde görülemez. | Bilgi | Gerçek girişle (LDAP bağlandığında) bir kez tarayıcıda denenmeli: 29. dakikada Payload'ın "oturumda kal" penceresi çıkmalı. |
 | R17 | ~~Sitede Ücretler ve Limitler'deki yeşil #008a00 kontrastı 4,34:1 (AA 4,5).~~ | KAPANDI 19.09.2026 — değiştirilmeyecek | Kullanıcı: klon site canlıyla birebir kalacak; UX/erişilebilirlik iyileştirmeleri yalnız CMS'e. Sitedeki #67-site eklemeleri de geri alındı. |
 | R18 | Medya (görseller) ve Kullanıcılar çöp kutusu kapsamında değil: New Vertical Maker bir görseli sildiğinde kalıcı siliniyor. 10 yıl kuralının içeriği de kapsayıp kapsamadığı netleştirilmeli. | Karar bekliyor | Kapsanacaksa Media'ya da `withTrash` eklenir (dosya MinIO'da kalır, geri alınabilir). |
+| R19 | `CMS_AUTO_LOGIN=true` her isteği (sitenin CMS okumaları dahil) admin sayıyor: yerelde taslaklar sitede görünüyor, erişim kuralları işlemiyor (e2e önizleme testi buldu). | KAPANDI 19.09.2026 (#70) | `src/env.ts` bu bayrakla bir Kubernetes/OpenShift pod'unda (`KUBERNETES_SERVICE_HOST`) açılmayı reddediyor. Yerel Docker ve `next dev` etkilenmez. |
 
 ## ⚠️ Bekleyen deploy adımları (canlı DB'de HENÜZ ÇALIŞTIRILMADI — 19.09.2026 güncel)
 

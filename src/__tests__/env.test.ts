@@ -84,6 +84,17 @@ describe("env validation", () => {
     expect(env.PAYLOAD_SECRET).toBe("dev-payload-secret-change-me");
   });
 
+  it("refuses CMS_AUTO_LOGIN inside a Kubernetes/OpenShift pod (19.09.2026)", async () => {
+    process.env = { ...process.env, ...validEnv, NODE_ENV: "production", CMS_AUTO_LOGIN: "true", KUBERNETES_SERVICE_HOST: "172.30.0.1" };
+    await expect(loadEnv()).rejects.toThrow(/CMS_AUTO_LOGIN=true inside a Kubernetes/);
+  });
+
+  it("still allows CMS_AUTO_LOGIN locally (no KUBERNETES_SERVICE_HOST)", async () => {
+    process.env = { ...process.env, ...validEnv, NODE_ENV: "production", CMS_AUTO_LOGIN: "true", KUBERNETES_SERVICE_HOST: undefined };
+    const { env } = await loadEnv();
+    expect(env.DATABASE_URI).toBe(validEnv.DATABASE_URI);
+  });
+
   it("allows a real secret in production with CMS_AUTO_LOGIN off", async () => {
     process.env = { ...process.env, ...validEnv, NODE_ENV: "production", CMS_AUTO_LOGIN: undefined };
     const { env } = await loadEnv();

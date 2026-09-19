@@ -32,6 +32,17 @@ const isProduction = process.env.NODE_ENV === "production";
 // default-secret check rather than double-block local dev.
 const isLocalDev = process.env.CMS_AUTO_LOGIN === "true";
 
+// 19.09.2026: CMS_AUTO_LOGIN makes every request — including the site's own
+// server-side reads — an admin session: drafts show on the site and no
+// access rule applies (found by the e2e share-link test). It must never run
+// in a cluster. Every Kubernetes/OpenShift pod has KUBERNETES_SERVICE_HOST;
+// local docker compose and `next dev` don't.
+if (isLocalDev && process.env.KUBERNETES_SERVICE_HOST) {
+  throw new Error(
+    "[env] CMS_AUTO_LOGIN=true inside a Kubernetes/OpenShift pod. Refusing to start — auto-login is for local review only and would open the whole CMS."
+  );
+}
+
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {

@@ -53,3 +53,7 @@ temp/
 # import it and it currently breaks `tsc --noEmit` (and therefore the Docker
 # build) — see docs. Regenerate on demand with `npm run generate:types`.
 payload-types.ts
+
+# Playwright e2e output (npm run test:e2e)
+e2e-results/
+e2e-report/

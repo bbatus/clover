@@ -79,6 +79,12 @@ const CAN_UNPUBLISH = new Set<string>([ROLES.NEW_VERTICAL_MAKER, ROLES.NEW_VERTI
 
 export const guardPublishedEdit: CollectionBeforeChangeHook = async ({ data, operation, originalDoc, req }) => {
   if (operation !== "update" || originalDoc?._status !== "published") return data;
+  // 19.09.2026 — geri dönüşüm kutusu: moving a live campaign into the trash
+  // (or restoring it) isn't a content edit, so the "unpublish first" rule
+  // below doesn't apply. Who may do it is decided by the trash access rule
+  // (access/trash.ts). Found by the e2e scheduled-publish test's cleanup:
+  // "Sil" on a live campaign was refused with the edit message.
+  if (Boolean(data?.deletedAt) !== Boolean(originalDoc?.deletedAt)) return data;
 
   const role = (req.user as { role?: string } | undefined)?.role;
   const isEnglish = req.i18n?.language === "en";
